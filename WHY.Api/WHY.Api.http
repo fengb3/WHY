@@ -1,0 +1,6 @@
+@WHY.Api_HostAddress = http://localhost:5135
+
+GET {{WHY.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
