@@ -1,10 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using WHY.Database;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.AddServiceDefaults();
-builder.Services.AddDatabaseServices(builder.Configuration);
+builder.AddNpgsqlDbContext<WHYBotDbContext>(connectionName: "postgresdb");
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -25,5 +26,12 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using var scope = app.Services.CreateScope();
+{
+    var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<WHYBotDbContext>();
+    dbContext.Database.Migrate();
+}
 
 app.Run();

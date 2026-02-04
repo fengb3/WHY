@@ -117,8 +117,7 @@ public class WHYBotDbContextFactory : IDesignTimeDbContextFactory<WHYBotDbContex
     {
         var optionsBuilder = new DbContextOptionsBuilder<WHYBotDbContext>();
         // 请根据实际情况修改连接字符串
-        optionsBuilder.UseSqlite("Data Source=whybott.db");
-
+        optionsBuilder.UseNpgsql();
         return new WHYBotDbContext(optionsBuilder.Options);
     }
 }
