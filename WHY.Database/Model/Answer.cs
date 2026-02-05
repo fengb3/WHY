@@ -79,7 +79,7 @@ public class Answer
     /// 回答用户
     /// </summary>
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; } = null!;
+    public BotUser BotUser { get; set; } = null!;
 
     /// <summary>
     /// 回答的评论

@@ -1,5 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // Added for [Authorize]
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens; // Added for JWT
+using System.IdentityModel.Tokens.Jwt; // Added for JWT
+using System.Security.Claims; // Added for JWT
+using System.Text; // Added for Encoding
 using WHY.Api.Dtos.Common;
 using WHY.Api.Dtos.Users;
 using WHY.Database;
@@ -12,109 +17,25 @@ namespace WHY.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class UsersController : ControllerBase
+public class UsersController(WHYBotDbContext context, IConfiguration configuration) : ControllerBase
 {
-    private readonly WHYBotDbContext _context;
-
-    public UsersController(WHYBotDbContext context)
-    {
-        _context = context;
-    }
-
-    /// <summary>
-    /// Get all users with pagination
-    /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<PagedResponse<UserResponse>>> GetUsers([FromQuery] PagedRequest request)
-    {
-        var query = _context.Users
-            .OrderByDescending(u => u.CreatedAt);
-
-        var totalCount = await query.CountAsync();
-
-        var users = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(u => new UserResponse
-            {
-                Id = u.Id,
-                Username = u.Username,
-                Email = u.Email,
-                Nickname = u.Nickname,
-                AvatarUrl = u.AvatarUrl,
-                Bio = u.Bio,
-                CreatedAt = u.CreatedAt,
-                LastLoginAt = u.LastLoginAt,
-                IsActive = u.IsActive,
-                QuestionCount = u.Questions.Count,
-                AnswerCount = u.Answers.Count
-            })
-            .ToListAsync();
-
-        return Ok(new PagedResponse<UserResponse>
-        {
-            Items = users,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            TotalCount = totalCount
-        });
-    }
-
-    /// <summary>
-    /// Get a specific user by ID
-    /// </summary>
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<UserResponse>> GetUser(Guid id)
-    {
-        var user = await _context.Users
-            .Include(u => u.Questions)
-            .Include(u => u.Answers)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user == null)
-        {
-            return NotFound(new { message = "User not found" });
-        }
-
-        return Ok(new UserResponse
-        {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            Nickname = user.Nickname,
-            AvatarUrl = user.AvatarUrl,
-            Bio = user.Bio,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
-            IsActive = user.IsActive,
-            QuestionCount = user.Questions.Count,
-            AnswerCount = user.Answers.Count
-        });
-    }
-
+    
     /// <summary>
     /// Register a new LLM user
     /// </summary>
     [HttpPost("register")]
-    public async Task<ActionResult<UserResponse>> Register([FromBody] RegisterUserRequest request)
+    public async Task<ActionResult<dynamic>> Register([FromBody] RegisterUserRequest request)
     {
         // Check if username already exists
-        if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+        if (await context.Users.AnyAsync(u => u.Username == request.Username))
         {
             return BadRequest(new { message = "Username already exists" });
         }
 
-        // Check if email already exists
-        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-        {
-            return BadRequest(new { message = "Email already exists" });
-        }
-
-        var user = new User
+        var user = new BotUser
         {
             Id = Guid.NewGuid(),
             Username = request.Username,
-            Email = request.Email,
             PasswordHash = HashPassword(request.Password),
             Nickname = request.Nickname,
             Bio = request.Bio,
@@ -122,22 +43,36 @@ public class UsersController : ControllerBase
             IsActive = true
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, new UserResponse
+        var token = GenerateJwtToken(user);
+
+        // Return both the token and the user info
+        return Ok(new
         {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            Nickname = user.Nickname,
-            AvatarUrl = user.AvatarUrl,
-            Bio = user.Bio,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
-            IsActive = user.IsActive,
-            QuestionCount = 0,
-            AnswerCount = 0
+            Token = token
+        });
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<dynamic>> Login([FromBody] LoginUserRequest request)
+    {
+        var user = await context.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
+        if (user == null || user.PasswordHash != HashPassword(request.Password))
+        {
+            return Unauthorized(new { message = "Invalid username or password" });
+        }
+        
+        // Update last login time
+        user.LastLoginAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+        
+        var token = GenerateJwtToken(user);
+        
+        return Ok(new
+        {
+            Token = token
         });
     }
 
@@ -149,14 +84,14 @@ public class UsersController : ControllerBase
         Guid id,
         [FromQuery] PagedRequest request)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == id);
+        var userExists = await context.Users.AnyAsync(u => u.Id == id);
         if (!userExists)
         {
-            return NotFound(new { message = "User not found" });
+            return NotFound(new { message = "BotUser not found" });
         }
 
-        var query = _context.Questions
-            .Include(q => q.User)
+        var query = context.Questions
+            .Include(q => q.BotUser)
             .Include(q => q.QuestionTopics)
                 .ThenInclude(qt => qt.Topic)
             .Where(q => q.UserId == id)
@@ -171,7 +106,7 @@ public class UsersController : ControllerBase
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.User.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Username,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,
@@ -202,14 +137,14 @@ public class UsersController : ControllerBase
         Guid id,
         [FromQuery] PagedRequest request)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == id);
+        var userExists = await context.Users.AnyAsync(u => u.Id == id);
         if (!userExists)
         {
-            return NotFound(new { message = "User not found" });
+            return NotFound(new { message = "BotUser not found" });
         }
 
-        var query = _context.Answers
-            .Include(a => a.User)
+        var query = context.Answers
+            .Include(a => a.BotUser)
             .Where(a => a.UserId == id)
             .OrderByDescending(a => a.CreatedAt);
 
@@ -223,7 +158,7 @@ public class UsersController : ControllerBase
                 Id = a.Id,
                 QuestionId = a.QuestionId,
                 UserId = a.UserId,
-                Username = a.IsAnonymous ? null : a.User.Username,
+                Username = a.IsAnonymous ? null : a.BotUser.Username,
                 Content = a.Content,
                 UpvoteCount = a.UpvoteCount,
                 DownvoteCount = a.DownvoteCount,
@@ -253,5 +188,31 @@ public class UsersController : ControllerBase
         var bytes = System.Text.Encoding.UTF8.GetBytes(password);
         var hash = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hash);
+    }
+
+    /// <summary>
+    /// Generates a JWT token for the authenticated user
+    /// </summary>
+    private string GenerateJwtToken(BotUser user)
+    {
+        var jwtKey = configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings";
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("id", user.Id.ToString())
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: configuration["Jwt:Issuer"],
+            audience: configuration["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.Now.AddDays(7), // Token valid for 7 days
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

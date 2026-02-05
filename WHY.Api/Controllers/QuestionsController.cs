@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using WHY.Api.Dtos.Common;
 using WHY.Api.Dtos.Questions;
 using WHY.Database;
@@ -12,14 +14,8 @@ namespace WHY.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class QuestionsController : ControllerBase
+public class QuestionsController(WHYBotDbContext context) : ControllerBase
 {
-    private readonly WHYBotDbContext _context;
-
-    public QuestionsController(WHYBotDbContext context)
-    {
-        _context = context;
-    }
 
     /// <summary>
     /// Get all questions with pagination
@@ -27,8 +23,8 @@ public class QuestionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedResponse<QuestionResponse>>> GetQuestions([FromQuery] PagedRequest request)
     {
-        var query = _context.Questions
-            .Include(q => q.User)
+        var query = context.Questions
+            .Include(q => q.BotUser)
             .Include(q => q.QuestionTopics)
                 .ThenInclude(qt => qt.Topic)
             .OrderByDescending(q => q.CreatedAt);
@@ -42,7 +38,7 @@ public class QuestionsController : ControllerBase
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.User.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Username,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,
@@ -71,8 +67,8 @@ public class QuestionsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<QuestionResponse>> GetQuestion(Guid id)
     {
-        var question = await _context.Questions
-            .Include(q => q.User)
+        var question = await context.Questions
+            .Include(q => q.BotUser)
             .Include(q => q.QuestionTopics)
                 .ThenInclude(qt => qt.Topic)
             .Include(q => q.Answers)
@@ -85,13 +81,13 @@ public class QuestionsController : ControllerBase
 
         // Increment view count
         question.ViewCount++;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return Ok(new QuestionResponse
         {
             Id = question.Id,
             UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.User.Username,
+            Username = question.IsAnonymous ? null : question.BotUser.Username,
             Title = question.Title,
             Description = question.Description,
             ViewCount = question.ViewCount,
@@ -109,19 +105,26 @@ public class QuestionsController : ControllerBase
     /// Create a new question (LLM asks a question)
     /// </summary>
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<QuestionResponse>> CreateQuestion([FromBody] CreateQuestionRequest request)
     {
+        var userIdString = User.FindFirst("id")?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        {
+            return Unauthorized();
+        }
+
         // Verify user exists
-        var user = await _context.Users.FindAsync(request.UserId);
+        var user = await context.Users.FindAsync(userId);
         if (user == null)
         {
-            return BadRequest(new { message = "User not found" });
+            return BadRequest(new { message = "BotUser not found" });
         }
 
         var question = new Question
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = userId,
             Title = request.Title,
             Description = request.Description,
             IsAnonymous = request.IsAnonymous,
@@ -129,17 +132,17 @@ public class QuestionsController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.Questions.Add(question);
+        context.Questions.Add(question);
 
         // Add topics if provided
         if (request.TopicIds != null && request.TopicIds.Count > 0)
         {
             foreach (var topicId in request.TopicIds)
             {
-                var topic = await _context.Topics.FindAsync(topicId);
+                var topic = await context.Topics.FindAsync(topicId);
                 if (topic != null)
                 {
-                    _context.QuestionTopics.Add(new QuestionTopic
+                    context.QuestionTopics.Add(new QuestionTopic
                     {
                         QuestionId = question.Id,
                         TopicId = topicId
@@ -148,7 +151,7 @@ public class QuestionsController : ControllerBase
             }
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetQuestion), new { id = question.Id }, new QuestionResponse
         {
@@ -171,11 +174,12 @@ public class QuestionsController : ControllerBase
     /// <summary>
     /// Update a question
     /// </summary>
+    [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<QuestionResponse>> UpdateQuestion(Guid id, [FromBody] UpdateQuestionRequest request)
     {
-        var question = await _context.Questions
-            .Include(q => q.User)
+        var question = await context.Questions
+            .Include(q => q.BotUser)
             .FirstOrDefaultAsync(q => q.Id == id);
 
         if (question == null)
@@ -199,18 +203,18 @@ public class QuestionsController : ControllerBase
         }
 
         question.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return Ok(new QuestionResponse
         {
             Id = question.Id,
             UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.User.Username,
+            Username = question.IsAnonymous ? null : question.BotUser.Username,
             Title = question.Title,
             Description = question.Description,
             ViewCount = question.ViewCount,
             FollowCount = question.FollowCount,
-            AnswerCount = await _context.Answers.CountAsync(a => a.QuestionId == id),
+            AnswerCount = await context.Answers.CountAsync(a => a.QuestionId == id),
             CreatedAt = question.CreatedAt,
             UpdatedAt = question.UpdatedAt,
             IsClosed = question.IsClosed,
@@ -222,17 +226,18 @@ public class QuestionsController : ControllerBase
     /// <summary>
     /// Delete a question
     /// </summary>
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteQuestion(Guid id)
     {
-        var question = await _context.Questions.FindAsync(id);
+        var question = await context.Questions.FindAsync(id);
         if (question == null)
         {
             return NotFound(new { message = "Question not found" });
         }
 
-        _context.Questions.Remove(question);
-        await _context.SaveChangesAsync();
+        context.Questions.Remove(question);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -245,8 +250,8 @@ public class QuestionsController : ControllerBase
         [FromQuery] string keyword,
         [FromQuery] PagedRequest request)
     {
-        var query = _context.Questions
-            .Include(q => q.User)
+        var query = context.Questions
+            .Include(q => q.BotUser)
             .Include(q => q.QuestionTopics)
                 .ThenInclude(qt => qt.Topic)
             .Where(q => q.Title.Contains(keyword) || 
@@ -262,7 +267,7 @@ public class QuestionsController : ControllerBase
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.User.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Username,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,

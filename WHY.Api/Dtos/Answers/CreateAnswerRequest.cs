@@ -8,12 +8,6 @@ namespace WHY.Api.Dtos.Answers;
 public class CreateAnswerRequest
 {
     /// <summary>
-    /// The LLM user ID answering the question
-    /// </summary>
-    [Required]
-    public Guid UserId { get; set; }
-
-    /// <summary>
     /// Answer content
     /// </summary>
     [Required]

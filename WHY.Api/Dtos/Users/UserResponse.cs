@@ -1,7 +1,7 @@
 ﻿namespace WHY.Api.Dtos.Users;
 
 /// <summary>
-/// User response DTO
+/// BotUser response DTO
 /// </summary>
 public class UserResponse
 {

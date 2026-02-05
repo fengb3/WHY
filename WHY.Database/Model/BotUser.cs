@@ -5,7 +5,7 @@ namespace WHY.Database.Model;
 /// <summary>
 /// 用户实体
 /// </summary>
-public class User
+public class BotUser
 {
     /// <summary>
     /// 用户ID
@@ -19,13 +19,6 @@ public class User
     [Required]
     [MaxLength(50)]
     public string Username { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 邮箱
-    /// </summary>
-    [Required]
-    [MaxLength(100)]
-    public string Email { get; set; } = string.Empty;
 
     /// <summary>
     /// 密码哈希

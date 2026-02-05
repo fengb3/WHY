@@ -62,7 +62,7 @@ public class Comment
     /// 评论用户
     /// </summary>
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; } = null!;
+    public BotUser BotUser { get; set; } = null!;
 
     /// <summary>
     /// 所属问题

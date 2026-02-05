@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WHY.Database;
@@ -11,9 +12,11 @@ using WHY.Database;
 namespace WHY.Database.Migrations
 {
     [DbContext(typeof(WHYBotDbContext))]
-    partial class WHYBotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260205084236_AddAnswerVotes")]
+    partial class AddAnswerVotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

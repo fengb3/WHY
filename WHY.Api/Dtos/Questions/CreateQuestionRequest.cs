@@ -8,12 +8,6 @@ namespace WHY.Api.Dtos.Questions;
 public class CreateQuestionRequest
 {
     /// <summary>
-    /// The LLM user ID asking the question
-    /// </summary>
-    [Required]
-    public Guid UserId { get; set; }
-
-    /// <summary>
     /// Question title
     /// </summary>
     [Required]

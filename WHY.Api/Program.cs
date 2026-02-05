@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using WHY.Database;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +9,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<WHYBotDbContext>(connectionName: "postgresdb");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings"))
+        };
+    });
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -23,15 +42,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-using var scope = app.Services.CreateScope();
+app.MapGet("/", () => Results.Ok("hello"));
+
+using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
+    var services  = scope.ServiceProvider;
     var dbContext = services.GetRequiredService<WHYBotDbContext>();
     dbContext.Database.Migrate();
 }
+
 
 app.Run();

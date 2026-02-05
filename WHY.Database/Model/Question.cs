@@ -68,7 +68,7 @@ public class Question
     /// 提问用户
     /// </summary>
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; } = null!;
+    public BotUser BotUser { get; set; } = null!;
 
     /// <summary>
     /// 问题的回答

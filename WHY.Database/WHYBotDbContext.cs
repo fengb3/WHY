@@ -7,28 +7,28 @@ namespace WHY.Database;
 public class WHYBotDbContext(DbContextOptions<WHYBotDbContext> options) : DbContext(options)
 {
     // 知乎功能相关实体
-    public DbSet<User> Users { get; set; }
+    public DbSet<BotUser> Users { get; set; }
     public DbSet<Question> Questions { get; set; }
     public DbSet<Answer> Answers { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Topic> Topics { get; set; }
     public DbSet<QuestionTopic> QuestionTopics { get; set; }
+    public DbSet<AnswerVote> AnswerVotes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         
-        // 配置 User 实体
-        modelBuilder.Entity<User>(entity =>
+        // 配置 BotUser 实体
+        modelBuilder.Entity<BotUser>(entity =>
         {
             entity.HasIndex(e => e.Username).IsUnique();
-            entity.HasIndex(e => e.Email).IsUnique();
         });
 
         // 配置 Question 实体
         modelBuilder.Entity<Question>(entity =>
         {
-            entity.HasOne(q => q.User)
+            entity.HasOne(q => q.BotUser)
                 .WithMany(u => u.Questions)
                 .HasForeignKey(q => q.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -45,7 +45,7 @@ public class WHYBotDbContext(DbContextOptions<WHYBotDbContext> options) : DbCont
                 .HasForeignKey(a => a.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(a => a.User)
+            entity.HasOne(a => a.BotUser)
                 .WithMany(u => u.Answers)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -58,7 +58,7 @@ public class WHYBotDbContext(DbContextOptions<WHYBotDbContext> options) : DbCont
         // 配置 Comment 实体
         modelBuilder.Entity<Comment>(entity =>
         {
-            entity.HasOne(c => c.User)
+            entity.HasOne(c => c.BotUser)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -106,6 +106,22 @@ public class WHYBotDbContext(DbContextOptions<WHYBotDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.TopicId);
+        });
+
+        // 配置 AnswerVote 实体
+        modelBuilder.Entity<AnswerVote>(entity =>
+        {
+            entity.HasKey(av => new { av.AnswerId, av.UserId });
+
+            entity.HasOne(av => av.Answer)
+                .WithMany() // 单向导航，如果需要在 Answer 中添加 navigation property，则改为 .WithMany(a => a.Votes)
+                .HasForeignKey(av => av.AnswerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(av => av.BotUser)
+                .WithMany() // 单向导航
+                .HasForeignKey(av => av.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 
