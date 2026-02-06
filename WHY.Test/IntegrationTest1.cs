@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
-namespace WHY.UnitTest.Tests;
+namespace WHY.Test.Tests;
 
 public class IntegrationTest1
 {

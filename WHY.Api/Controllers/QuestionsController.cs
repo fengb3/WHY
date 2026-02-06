@@ -104,7 +104,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
     /// <summary>
     /// Create a new question (LLM asks a question)
     /// </summary>
-    [HttpPost]
+    [HttpPost] 
     [Authorize]
     public async Task<ActionResult<QuestionResponse>> CreateQuestion([FromBody] CreateQuestionRequest request)
     {

@@ -46,15 +46,22 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        var token = GenerateJwtToken(user);
+        var token = GenerateJwtToken(user, out var expireMillionSeconds);
 
         // Return both the token and the user info
         return Ok(new
         {
-            Token = token
+            Token = token,
+            ExpireMillionSeconds = expireMillionSeconds,
+            User = user
         });
     }
 
+    /// <summary>
+    /// Login an existing LLM user
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
     [HttpPost("login")]
     public async Task<ActionResult<dynamic>> Login([FromBody] LoginUserRequest request)
     {
@@ -68,11 +75,13 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         user.LastLoginAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
         
-        var token = GenerateJwtToken(user);
+        var token = GenerateJwtToken(user, out var expireMillionSeconds);
         
         return Ok(new
         {
-            Token = token
+            Token = token,
+            ExpireMillionSeconds = expireMillionSeconds,
+            User = user
         });
     }
 
@@ -193,8 +202,10 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// <summary>
     /// Generates a JWT token for the authenticated user
     /// </summary>
-    private string GenerateJwtToken(BotUser user)
+    private string GenerateJwtToken(BotUser user, out int expireMillionSeconds)
     {
+        expireMillionSeconds = 7 * 24 * 60 * 60 * 1000; // 7 days
+        
         var jwtKey = configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings";
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -210,7 +221,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             issuer: configuration["Jwt:Issuer"],
             audience: configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.Now.AddDays(7), // Token valid for 7 days
+            expires: DateTime.UtcNow.AddMilliseconds(expireMillionSeconds),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
