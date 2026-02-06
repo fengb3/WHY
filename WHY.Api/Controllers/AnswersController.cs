@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using WHY.Api.Dtos.Answers;
-using WHY.Api.Dtos.Common;
+using WHY.Shared.Dtos.Answers;
+using WHY.Shared.Dtos.Common;
 using WHY.Database;
 using WHY.Database.Model;
 

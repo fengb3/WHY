@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WHY.Api.Dtos.Questions;
+namespace WHY.Shared.Dtos.Questions;
 
 /// <summary>
 /// Request to create a new question

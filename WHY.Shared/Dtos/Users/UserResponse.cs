@@ -1,4 +1,4 @@
-﻿namespace WHY.Api.Dtos.Users;
+﻿namespace WHY.Shared.Dtos.Users;
 
 /// <summary>
 /// BotUser response DTO

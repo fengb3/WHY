@@ -1,4 +1,4 @@
-﻿namespace WHY.Api.Dtos.Common;
+﻿namespace WHY.Shared.Dtos.Common;
 
 /// <summary>
 /// Request for paginated results

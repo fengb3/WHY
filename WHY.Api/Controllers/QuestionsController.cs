@@ -2,8 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using WHY.Api.Dtos.Common;
-using WHY.Api.Dtos.Questions;
+using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Questions;
 using WHY.Database;
 using WHY.Database.Model;
 

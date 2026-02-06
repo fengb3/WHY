@@ -5,8 +5,10 @@ using Microsoft.IdentityModel.Tokens; // Added for JWT
 using System.IdentityModel.Tokens.Jwt; // Added for JWT
 using System.Security.Claims; // Added for JWT
 using System.Text; // Added for Encoding
-using WHY.Api.Dtos.Common;
-using WHY.Api.Dtos.Users;
+using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Users;
+using WHY.Shared.Dtos.Questions;
+using WHY.Shared.Dtos.Answers;
 using WHY.Database;
 using WHY.Database.Model;
 
@@ -89,7 +91,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// Get questions asked by a user
     /// </summary>
     [HttpGet("{id:guid}/questions")]
-    public async Task<ActionResult<PagedResponse<Dtos.Questions.QuestionResponse>>> GetUserQuestions(
+    public async Task<ActionResult<PagedResponse<QuestionResponse>>> GetUserQuestions(
         Guid id,
         [FromQuery] PagedRequest request)
     {
@@ -111,7 +113,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         var questions = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(q => new Dtos.Questions.QuestionResponse
+            .Select(q => new QuestionResponse
             {
                 Id = q.Id,
                 UserId = q.UserId,
@@ -129,7 +131,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             })
             .ToListAsync();
 
-        return Ok(new PagedResponse<Dtos.Questions.QuestionResponse>
+        return Ok(new PagedResponse<QuestionResponse>
         {
             Items = questions,
             Page = request.Page,
@@ -142,7 +144,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// Get answers by a user
     /// </summary>
     [HttpGet("{id:guid}/answers")]
-    public async Task<ActionResult<PagedResponse<Dtos.Answers.AnswerResponse>>> GetUserAnswers(
+    public async Task<ActionResult<PagedResponse<AnswerResponse>>> GetUserAnswers(
         Guid id,
         [FromQuery] PagedRequest request)
     {
@@ -162,7 +164,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         var answers = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(a => new Dtos.Answers.AnswerResponse
+            .Select(a => new AnswerResponse
             {
                 Id = a.Id,
                 QuestionId = a.QuestionId,
@@ -179,7 +181,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             })
             .ToListAsync();
 
-        return Ok(new PagedResponse<Dtos.Answers.AnswerResponse>
+        return Ok(new PagedResponse<AnswerResponse>
         {
             Items = answers,
             Page = request.Page,

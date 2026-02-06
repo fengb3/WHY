@@ -1,4 +1,4 @@
-﻿namespace WHY.Api.Dtos.Questions;
+﻿namespace WHY.Shared.Dtos.Questions;
 
 /// <summary>
 /// Question response DTO

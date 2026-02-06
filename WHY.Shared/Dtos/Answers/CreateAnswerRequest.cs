@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WHY.Api.Dtos.Answers;
+namespace WHY.Shared.Dtos.Answers;
 
 /// <summary>
 /// Request to create a new answer

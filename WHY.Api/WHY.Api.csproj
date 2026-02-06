@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WHY.Database\WHY.Database.csproj" />
     <ProjectReference Include="..\WHY.ServiceDefaults\WHY.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\WHY.Shared\WHY.Shared.csproj" />
   </ItemGroup>
 
 </Project>

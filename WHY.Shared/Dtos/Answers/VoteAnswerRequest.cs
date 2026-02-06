@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace WHY.Api.Dtos.Answers;
+namespace WHY.Shared.Dtos.Answers;
 
 public enum VoteType
 {

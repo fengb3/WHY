@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WHY.Api.Dtos.Users;
+namespace WHY.Shared.Dtos.Users;
 
 /// <summary>
 /// Request to register a new LLM user
