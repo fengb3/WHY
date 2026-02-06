@@ -243,11 +243,15 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
     }
 
     /// <summary>
-    /// Upvote an answer
+    /// Update vote for an answer
     /// </summary>
     [Authorize]
-    [HttpPost("{answerId:guid}/upvote")]
-    public async Task<ActionResult<AnswerResponse>> UpvoteAnswer(Guid questionId, Guid answerId)
+    [HttpPost("{answerId:guid}/vote")]
+    public async Task<ActionResult<AnswerResponse>> VoteAnswer(
+        Guid questionId,
+        Guid answerId,
+        [FromBody] VoteAnswerRequest request
+    )
     {
         var userIdString = User.FindFirst("id")?.Value;
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
@@ -264,109 +268,68 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
             return NotFound(new { message = "Answer not found" });
         }
 
-        var existingVote = await context.AnswerVotes
-            .FirstOrDefaultAsync(av => av.AnswerId == answerId && av.UserId == userId);
-
-        if (existingVote != null)
-        {
-            if (existingVote.IsUpvote)
-            {
-                return BadRequest(new { message = "You have already upvoted this answer" });
-            }
-            else
-            {
-                // Switch from downvote to upvote
-                existingVote.IsUpvote = true;
-                existingVote.CreatedAt = DateTime.UtcNow;
-                answer.DownvoteCount = Math.Max(0, answer.DownvoteCount - 1);
-                answer.UpvoteCount++;
-            }
-        }
-        else
-        {
-            // Create new upvote
-            var vote = new AnswerVote
-            {
-                AnswerId = answerId,
-                UserId = userId,
-                IsUpvote = true
-            };
-            context.AnswerVotes.Add(vote);
-            answer.UpvoteCount++;
-        }
-
-        await context.SaveChangesAsync();
-
-        return Ok(
-            new AnswerResponse
-            {
-                Id = answer.Id,
-                QuestionId = answer.QuestionId,
-                UserId = answer.UserId,
-                Username = answer.IsAnonymous ? null : answer.BotUser.Username,
-                Content = answer.Content,
-                UpvoteCount = answer.UpvoteCount,
-                DownvoteCount = answer.DownvoteCount,
-                CommentCount = answer.CommentCount,
-                CreatedAt = answer.CreatedAt,
-                UpdatedAt = answer.UpdatedAt,
-                IsAnonymous = answer.IsAnonymous,
-                IsAccepted = answer.IsAccepted,
-            }
+        var existingVote = await context.AnswerVotes.FirstOrDefaultAsync(av =>
+            av.AnswerId == answerId && av.UserId == userId
         );
-    }
 
-    /// <summary>
-    /// Downvote an answer
-    /// </summary>
-    [HttpPost("{answerId:guid}/downvote")]
-    [Authorize]
-    public async Task<ActionResult<AnswerResponse>> DownvoteAnswer(Guid questionId, Guid answerId)
-    {
-        var userIdString = User.FindFirst("id")?.Value;
-        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        switch (request.VoteType)
         {
-            return Unauthorized();
-        }
+            case VoteType.Upvote:
+                if (existingVote == null)
+                {
+                    var vote = new AnswerVote
+                    {
+                        AnswerId = answerId,
+                        UserId = userId,
+                        IsUpvote = true
+                    };
+                    context.AnswerVotes.Add(vote);
+                    answer.UpvoteCount++;
+                }
+                else if (!existingVote.IsUpvote)
+                {
+                    existingVote.IsUpvote = true;
+                    existingVote.CreatedAt = DateTime.UtcNow;
+                    answer.DownvoteCount = Math.Max(0, answer.DownvoteCount - 1);
+                    answer.UpvoteCount++;
+                }
+                break;
 
-        var answer = await context
-            .Answers.Include(a => a.BotUser)
-            .FirstOrDefaultAsync(a => a.Id == answerId && a.QuestionId == questionId);
+            case VoteType.Downvote:
+                if (existingVote == null)
+                {
+                    var vote = new AnswerVote
+                    {
+                        AnswerId = answerId,
+                        UserId = userId,
+                        IsUpvote = false
+                    };
+                    context.AnswerVotes.Add(vote);
+                    answer.DownvoteCount++;
+                }
+                else if (existingVote.IsUpvote)
+                {
+                    existingVote.IsUpvote = false;
+                    existingVote.CreatedAt = DateTime.UtcNow;
+                    answer.UpvoteCount = Math.Max(0, answer.UpvoteCount - 1);
+                    answer.DownvoteCount++;
+                }
+                break;
 
-        if (answer == null)
-        {
-            return NotFound(new { message = "Answer not found" });
-        }
-
-        var existingVote = await context.AnswerVotes
-            .FirstOrDefaultAsync(av => av.AnswerId == answerId && av.UserId == userId);
-
-        if (existingVote != null)
-        {
-            if (!existingVote.IsUpvote)
-            {
-                return BadRequest(new { message = "You have already downvoted this answer" });
-            }
-            else
-            {
-                // Switch from upvote to downvote
-                existingVote.IsUpvote = false;
-                existingVote.CreatedAt = DateTime.UtcNow;
-                answer.UpvoteCount = Math.Max(0, answer.UpvoteCount - 1);
-                answer.DownvoteCount++;
-            }
-        }
-        else
-        {
-            // Create new downvote
-            var vote = new AnswerVote
-            {
-                AnswerId = answerId,
-                UserId = userId,
-                IsUpvote = false
-            };
-            context.AnswerVotes.Add(vote);
-            answer.DownvoteCount++;
+            case VoteType.None:
+                if (existingVote != null)
+                {
+                    context.AnswerVotes.Remove(existingVote);
+                    if (existingVote.IsUpvote)
+                    {
+                        answer.UpvoteCount = Math.Max(0, answer.UpvoteCount - 1);
+                    }
+                    else
+                    {
+                        answer.DownvoteCount = Math.Max(0, answer.DownvoteCount - 1);
+                    }
+                }
+                break;
         }
 
         await context.SaveChangesAsync();
