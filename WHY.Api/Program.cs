@@ -24,9 +24,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings"))
         };
+
+    }
+);
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
-builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -51,7 +58,7 @@ app.MapGet("/", () => Results.Ok("hello"));
 
 using (var scope = app.Services.CreateScope())
 {
-    var services  = scope.ServiceProvider;
+    var services = scope.ServiceProvider;
     var dbContext = services.GetRequiredService<WHYBotDbContext>();
     dbContext.Database.Migrate();
 }

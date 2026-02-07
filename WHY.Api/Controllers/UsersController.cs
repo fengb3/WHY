@@ -1,16 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization; // Added for [Authorize]
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens; // Added for JWT
-using System.IdentityModel.Tokens.Jwt; // Added for JWT
-using System.Security.Claims; // Added for JWT
-using System.Text; // Added for Encoding
-using WHY.Shared.Dtos.Common;
-using WHY.Shared.Dtos.Users;
-using WHY.Shared.Dtos.Questions;
-using WHY.Shared.Dtos.Answers;
 using WHY.Database;
 using WHY.Database.Model;
+using WHY.Shared.Dtos.Answers;
+using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Questions;
+using WHY.Shared.Dtos.Users;
+using WHY.Shared.Dtos.Auth;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.Text;
 
 namespace WHY.Api.Controllers;
 
@@ -21,12 +21,82 @@ namespace WHY.Api.Controllers;
 [Route("api/[controller]")]
 public class UsersController(WHYBotDbContext context, IConfiguration configuration) : ControllerBase
 {
-    
+    /// <summary>
+    /// Get all users with pagination
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<PagedResponse<UserResponse>>> GetUsers([FromQuery] PagedRequest request)
+    {
+        var query = context.Users
+            .OrderByDescending(u => u.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        var users = await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(u => new UserResponse
+            {
+                Id = u.Id,
+                Username = u.Username,
+                // Email = u.Email,
+                Nickname = u.Nickname,
+                AvatarUrl = u.AvatarUrl,
+                Bio = u.Bio,
+                CreatedAt = u.CreatedAt,
+                LastLoginAt = u.LastLoginAt,
+                IsActive = u.IsActive,
+                QuestionCount = u.Questions.Count,
+                AnswerCount = u.Answers.Count
+            })
+            .ToListAsync();
+
+        return Ok(new PagedResponse<UserResponse>
+        {
+            Items = users,
+            Page = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        });
+    }
+
+    /// <summary>
+    /// Get a specific user by ID
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<UserResponse>> GetUser(Guid id)
+    {
+        var user = await context.Users
+            .Include(u => u.Questions)
+            .Include(u => u.Answers)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        return Ok(new UserResponse
+        {
+            Id = user.Id,
+            Username = user.Username,
+            // Email = user.Email,
+            Nickname = user.Nickname,
+            AvatarUrl = user.AvatarUrl,
+            Bio = user.Bio,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            IsActive = user.IsActive,
+            QuestionCount = user.Questions.Count,
+            AnswerCount = user.Answers.Count
+        });
+    }
+
     /// <summary>
     /// Register a new LLM user
     /// </summary>
     [HttpPost("register")]
-    public async Task<ActionResult<dynamic>> Register([FromBody] RegisterUserRequest request)
+    public async Task<ActionResult<UserResponse>> Register([FromBody] RegisterUserRequest request)
     {
         // Check if username already exists
         if (await context.Users.AnyAsync(u => u.Username == request.Username))
@@ -34,10 +104,17 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             return BadRequest(new { message = "Username already exists" });
         }
 
-        var user = new BotUser
+        // Check if email already exists
+        // if (await context.Users.AnyAsync(u => u.Email == request.Email))
+        // {
+        //     return BadRequest(new { message = "Email already exists" });
+        // }
+
+        var user = new BotUser()
         {
             Id = Guid.NewGuid(),
             Username = request.Username,
+            // Email = request.Email,
             PasswordHash = HashPassword(request.Password),
             Nickname = request.Nickname,
             Bio = request.Bio,
@@ -48,42 +125,48 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        var token = GenerateJwtToken(user, out var expireMillionSeconds);
-
-        // Return both the token and the user info
-        return Ok(new
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, new UserResponse
         {
-            Token = token,
-            ExpireMillionSeconds = expireMillionSeconds,
-            User = user
+            Id = user.Id,
+            Username = user.Username,
+            // Email = user.Email,
+            Nickname = user.Nickname,
+            AvatarUrl = user.AvatarUrl,
+            Bio = user.Bio,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            IsActive = user.IsActive,
+            QuestionCount = 0,
+            AnswerCount = 0
         });
     }
 
     /// <summary>
     /// Login an existing LLM user
     /// </summary>
-    /// <param name="request"></param>
-    /// <returns></returns>
     [HttpPost("login")]
-    public async Task<ActionResult<dynamic>> Login([FromBody] LoginUserRequest request)
+    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginUserRequest request)
     {
-        var user = await context.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
-        if (user == null || user.PasswordHash != HashPassword(request.Password))
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+        if (user == null || !user.IsActive)
         {
             return Unauthorized(new { message = "Invalid username or password" });
         }
-        
-        // Update last login time
+
+        var passwordHash = HashPassword(request.Password);
+        if (!string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
+        {
+            return Unauthorized(new { message = "Invalid username or password" });
+        }
+
         user.LastLoginAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
-        
-        var token = GenerateJwtToken(user, out var expireMillionSeconds);
-        
-        return Ok(new
+
+        var token = GenerateJwtToken(user);
+
+        return Ok(new AuthResponse
         {
-            Token = token,
-            ExpireMillionSeconds = expireMillionSeconds,
-            User = user
+            Token = token
         });
     }
 
@@ -98,7 +181,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         var userExists = await context.Users.AnyAsync(u => u.Id == id);
         if (!userExists)
         {
-            return NotFound(new { message = "BotUser not found" });
+            return NotFound(new { message = "User not found" });
         }
 
         var query = context.Questions
@@ -151,7 +234,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         var userExists = await context.Users.AnyAsync(u => u.Id == id);
         if (!userExists)
         {
-            return NotFound(new { message = "BotUser not found" });
+            return NotFound(new { message = "User not found" });
         }
 
         var query = context.Answers
@@ -190,6 +273,32 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         });
     }
 
+    private string GenerateJwtToken(BotUser user)
+    {
+        var key = configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings";
+        var issuer = configuration["Jwt:Issuer"] ?? "WHY.Api";
+        var audience = configuration["Jwt:Audience"] ?? "WHY.Client";
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new("id", user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.UniqueName, user.Username)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer,
+            audience,
+            claims,
+            expires: DateTime.UtcNow.AddDays(7),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     /// <summary>
     /// Simple password hashing (in production, use a proper hashing library like BCrypt)
     /// </summary>
@@ -199,33 +308,5 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
         var bytes = System.Text.Encoding.UTF8.GetBytes(password);
         var hash = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hash);
-    }
-
-    /// <summary>
-    /// Generates a JWT token for the authenticated user
-    /// </summary>
-    private string GenerateJwtToken(BotUser user, out int expireMillionSeconds)
-    {
-        expireMillionSeconds = 7 * 24 * 60 * 60 * 1000; // 7 days
-        
-        var jwtKey = configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings";
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("id", user.Id.ToString())
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: configuration["Jwt:Issuer"],
-            audience: configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMilliseconds(expireMillionSeconds),
-            signingCredentials: credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

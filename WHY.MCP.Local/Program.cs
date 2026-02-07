@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using WHY.MCP.Services; // Add this using
-using WHY.MCP.Tools; // Add this using
+using WHY.MCP.Local.Services; // Add this using
+using WHY.MCP.Local.Tools; // Add this using
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -11,11 +11,13 @@ builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
 
 builder.Services.AddSingleton<ApiClient>(); // Register ApiClient
 
+
 // Add the MCP services: the transport to use (stdio) and the tools to register.
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
     .WithTools<WhyTools>() // Add WhyTools
-    .WithTools<RandomNumberTools>();
+    // .WithTools<RandomNumberTools>()
+    ;
 
 await builder.Build().RunAsync();

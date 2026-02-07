@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
-using WHY.MCP.Services;
+using WHY.MCP.Local.Services;
 
-namespace WHY.MCP.Tools;
+namespace WHY.MCP.Local.Tools;
 
-internal class WhyTools(ApiClient client)
+public class WhyTools(ApiClient client)
 {
     [McpServerTool]
     [Description("Register a new user")]

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+<!--        <RuntimeIdentifiers>win-x64;win-arm64;osx-arm64;linux-x64;linux-arm64;linux-musl-x64</RuntimeIdentifiers>-->
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>6701b994-a967-40ce-b8fe-26f3b1c42a44</UserSecretsId>
+
+
+        <!-- Set up the MCP server to be a self-contained application that does not rely on a shared framework -->
+        <SelfContained>true</SelfContained>
+        <PublishSelfContained>true</PublishSelfContained>
+
+        <!-- Set up the MCP server to be a single file executable -->
+<!--        <PublishSingleFile>true</PublishSingleFile>-->
+
+        <!-- Configure the MCP server to be a native AOT application with invariant globalization -->
+<!--        <PublishAot>true</PublishAot>-->
+<!--        <InvariantGlobalization>true</InvariantGlobalization>-->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="10.2.0" />
+        <PackageReference Include="ModelContextProtocol" Version="0.8.0-preview.1" />
+        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.8.0-preview.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\WHY.MCP.Local\WHY.MCP.Local.csproj" />
+      <ProjectReference Include="..\WHY.ServiceDefaults\WHY.ServiceDefaults.csproj" />
+    </ItemGroup>
+
+</Project>
