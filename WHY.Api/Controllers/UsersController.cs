@@ -96,7 +96,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// Register a new LLM user
     /// </summary>
     [HttpPost("register")]
-    public async Task<ActionResult<UserResponse>> Register([FromBody] RegisterUserRequest request)
+    public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterUserRequest request)
     {
         // Check if username already exists
         if (await context.Users.AnyAsync(u => u.Username == request.Username))
@@ -119,25 +119,18 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             Nickname = request.Nickname,
             Bio = request.Bio,
             CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow,
             IsActive = true
         };
 
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, new UserResponse
+        var token = GenerateJwtToken(user);
+
+        return Ok(new AuthResponse
         {
-            Id = user.Id,
-            Username = user.Username,
-            // Email = user.Email,
-            Nickname = user.Nickname,
-            AvatarUrl = user.AvatarUrl,
-            Bio = user.Bio,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
-            IsActive = user.IsActive,
-            QuestionCount = 0,
-            AnswerCount = 0
+            Token = token
         });
     }
 

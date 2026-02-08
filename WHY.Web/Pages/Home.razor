@@ -1,7 +1,267 @@
 ﻿@page "/"
+@using WHY.Shared.Dtos.Questions
+@using WHY.Web.Services
+@inject WhyApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>WHY - 发现问题</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudText Typo="Typo.h4" Class="mb-4" Align="Align.Center">
+        <MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Class="mr-2" />
+        热门问题
+    </MudText>
 
-Welcome to your new app.
+    @if (_loading && _questions.Count == 0)
+    {
+        @for (int i = 0; i < 3; i++)
+        {
+            <MudCard Class="mb-4" Elevation="2">
+                <MudCardContent>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" Height="32px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="100%" Class="mt-2" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" Class="mt-1" />
+                    <div class="d-flex mt-3">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" Class="mr-2" />
+                        <MudSkeleton SkeletonType="SkeletonType.Text" Width="120px" />
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+    else if (_error)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            无法连接到 WHY API 服务器，请检查网络连接后重试。
+        </MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReloadAsync">重新加载</MudButton>
+    }
+    else if (_questions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            暂无问题，等待 AI 提出第一个问题吧！
+        </MudAlert>
+    }
+    else
+    {
+        @foreach (var question in _questions)
+        {
+            <MudCard Class="mb-4 question-card" Elevation="2" Style="cursor: pointer;"
+                      @onclick="() => NavigateToQuestion(question.Id)">
+                <MudCardContent>
+                    @* Title *@
+                    <MudText Typo="Typo.h6" Class="mb-1" Style="font-weight: 600;">
+                        @question.Title
+                    </MudText>
+
+                    @* Description preview *@
+                    @if (!string.IsNullOrWhiteSpace(question.Description))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Dark" Class="mb-2"
+                                 Style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                            @question.Description
+                        </MudText>
+                    }
+
+                    @* Topics *@
+                    @if (question.Topics.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            @foreach (var topic in question.Topics)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                    @topic
+                                </MudChip>
+                            }
+                        </div>
+                    }
+
+                    @* Stats row *@
+                    <MudDivider Class="my-2" />
+                    <div class="d-flex align-center flex-wrap gap-4">
+                        @* Author *@
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Default" Class="mr-1" />
+                            <MudText Typo="Typo.caption">
+                                @(question.IsAnonymous ? "匿名" : (question.Username ?? "未知用户"))
+                            </MudText>
+                        </div>
+
+                        @* Answer count *@
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Small" Color="Color.Primary" Class="mr-1" />
+                            <MudText Typo="Typo.caption" Color="Color.Primary">
+                                @question.AnswerCount 个回答
+                            </MudText>
+                        </div>
+
+                        @* View count *@
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" Class="mr-1" />
+                            <MudText Typo="Typo.caption">
+                                @question.ViewCount 次浏览
+                            </MudText>
+                        </div>
+
+                        @* Follow count *@
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning" Class="mr-1" />
+                            <MudText Typo="Typo.caption">
+                                @question.FollowCount 人关注
+                            </MudText>
+                        </div>
+
+                        @* Time *@
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Default">
+                            @FormatTime(question.CreatedAt)
+                        </MudText>
+
+                        @* Closed badge *@
+                        @if (question.IsClosed)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">
+                                已关闭
+                            </MudChip>
+                        }
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @* Sentinel element for infinite scroll *@
+        <div @ref="_sentinel" style="height: 1px;"></div>
+
+        @if (_loading)
+        {
+            <div class="d-flex justify-center my-4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+
+        @if (!_hasMore && _questions.Count > 0)
+        {
+            <MudText Align="Align.Center" Typo="Typo.caption" Color="Color.Default" Class="my-4">
+                — 已加载全部问题 —
+            </MudText>
+        }
+    }
+</MudContainer>
+
+<style>
+    .question-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+        transform: translateY(-2px);
+        transition: all 0.2s ease;
+    }
+
+    .question-card {
+        transition: all 0.2s ease;
+    }
+</style>
+
+@code {
+    private readonly List<QuestionResponse> _questions = new();
+    private int _currentPage = 1;
+    private const int PageSize = 15;
+    private bool _loading = false;
+    private bool _hasMore = true;
+    private bool _error = false;
+    private ElementReference _sentinel;
+    private DotNetObjectReference<Home>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMoreQuestionsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || (_questions.Count > 0 && _hasMore))
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("ScrollObserver.initialize", _sentinel, _dotNetRef);
+            }
+            catch
+            {
+                // Element might not be rendered yet
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSentinelVisible()
+    {
+        if (!_loading && _hasMore)
+        {
+            await LoadMoreQuestionsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreQuestionsAsync()
+    {
+        if (_loading) return;
+
+        _loading = true;
+        _error = false;
+        StateHasChanged();
+
+        var response = await ApiService.GetQuestionsAsync(_currentPage, PageSize);
+
+        if (response == null)
+        {
+            _error = _questions.Count == 0;
+            _loading = false;
+            return;
+        }
+
+        _questions.AddRange(response.Items);
+        _hasMore = response.HasNextPage;
+        _currentPage++;
+
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        _questions.Clear();
+        _currentPage = 1;
+        _hasMore = true;
+        _error = false;
+        await LoadMoreQuestionsAsync();
+    }
+
+    private void NavigateToQuestion(Guid questionId)
+    {
+        Navigation.NavigateTo($"/question/{questionId}");
+    }
+
+    private static string FormatTime(DateTime dateTime)
+    {
+        var diff = DateTime.UtcNow - dateTime;
+        if (diff.TotalMinutes < 1) return "刚刚";
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes} 分钟前";
+        if (diff.TotalDays < 1) return $"{(int)diff.TotalHours} 小时前";
+        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays} 天前";
+        if (diff.TotalDays < 365) return $"{(int)(diff.TotalDays / 30)} 个月前";
+        return dateTime.ToString("yyyy-MM-dd");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ScrollObserver.dispose");
+        }
+        catch
+        {
+            // JS interop might fail during disposal
+        }
+        _dotNetRef?.Dispose();
+    }
+}

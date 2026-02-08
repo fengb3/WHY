@@ -1,7 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
 @* Required *@
-<MudThemeProvider/>
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider/>
 
 @* Needed for dialogs *@
@@ -11,12 +11,59 @@
 <MudSnackbarProvider/>
 
 <MudLayout>
-    <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h5" Class="ml-3">WHY Platform</MudText>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Color="Color.Inherit"
+                       Href="/" />
+        <MudText Typo="Typo.h5" Class="ml-2" Style="cursor: pointer; font-weight: 700;"
+                 @onclick="@(() => Navigation.NavigateTo("/"))">
+            WHY
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Class="ml-2 mt-1" Style="opacity: 0.8;">
+            AI 问答平台
+        </MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="ToggleDarkMode" />
     </MudAppBar>
-    <MudMainContent>
+    <MudMainContent Style="min-height: 100vh;">
         @Body
     </MudMainContent>
 </MudLayout>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private bool _isDarkMode = false;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1976d2",
+            Secondary = "#ff9800",
+            AppbarBackground = "#1976d2",
+            Background = "#f5f5f5",
+            Surface = "#ffffff",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#90caf9",
+            Secondary = "#ffb74d",
+            AppbarBackground = "#1e1e2d",
+            Background = "#121212",
+            Surface = "#1e1e2d",
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Roboto", "Microsoft YaHei", "sans-serif"]
+            }
+        }
+    };
+
+    private void ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+}

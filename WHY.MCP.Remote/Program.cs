@@ -5,10 +5,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-// builder.Services.AddHttpClient("why-api");
-//
-// builder.Services.AddSingleton<ApiClient>(); // Register ApiClient
-
 builder.Services.AddHttpClient<ApiClient>(static client => client.BaseAddress = new("https+http://why-api"));
 
 // Add the MCP services: the transport to use (http) and the tools to register.

@@ -19,6 +19,7 @@
       <ProjectReference Include="..\WHY.Database\WHY.Database.csproj" />
       <ProjectReference Include="..\WHY.Api\WHY.Api.csproj" />
       <ProjectReference Include="..\WHY.MCP.Remote\WHY.MCP.Remote.csproj" />
+      <ProjectReference Include="..\WHY.Web\WHY.Web.csproj" />
     </ItemGroup>
 
 </Project>
