@@ -11,6 +11,6 @@ public enum VoteType
 
 public class VoteAnswerRequest
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<VoteType>))]
     public VoteType VoteType { get; set; }
 }

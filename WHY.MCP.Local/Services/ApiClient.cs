@@ -4,9 +4,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using WHY.Shared.Dtos.Answers;
+using WHY.Shared.Dtos.Auth;
 using WHY.Shared.Dtos.Questions;
 using WHY.Shared.Dtos.Users;
-using WHY.Shared.Dtos.Auth;
 
 namespace WHY.MCP.Local.Services;
 
@@ -14,7 +14,12 @@ public class ApiClient
 {
     private readonly HttpClient _httpHttpClient;
     private readonly ILogger<ApiClient> _logger;
-    private static string TokenFilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WHY.MCP.Data", "token.json");
+    private static string TokenFilePath =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WHY.MCP.Data",
+            "token.json"
+        );
 
     private TokenInfo? _tokenInfo;
 
@@ -35,7 +40,8 @@ public class ApiClient
                 _tokenInfo = JsonSerializer.Deserialize(json, ApiJsonContext.Default.TokenInfo);
                 if (_tokenInfo != null && !string.IsNullOrEmpty(_tokenInfo.Token))
                 {
-                    _httpHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _tokenInfo.Token);
+                    _httpHttpClient.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", _tokenInfo.Token);
                 }
             }
         }
@@ -54,9 +60,15 @@ public class ApiClient
             {
                 Directory.CreateDirectory(dir);
             }
-            File.WriteAllText(TokenFilePath, JsonSerializer.Serialize(tokenInfo, ApiJsonContext.Default.TokenInfo));
+            File.WriteAllText(
+                TokenFilePath,
+                JsonSerializer.Serialize(tokenInfo, ApiJsonContext.Default.TokenInfo)
+            );
             _tokenInfo = tokenInfo;
-            _httpHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenInfo.Token);
+            _httpHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                tokenInfo.Token
+            );
         }
         catch (Exception ex)
         {
@@ -64,22 +76,29 @@ public class ApiClient
         }
     }
 
-    public async Task<string> RegisterAsync(string username, string password, string? nickname = null, string? bio = null)
+    public async Task<string> RegisterAsync(
+        string username,
+        string password,
+        string? nickname = null,
+        string? bio = null
+    )
     {
         var request = new RegisterUserRequest
         {
             Username = username,
             Password = password,
             Nickname = nickname,
-            Bio = bio
+            Bio = bio,
         };
 
-        var response = await _httpHttpClient.PostAsync("api/Users/register", JsonContent.Create(request, ApiJsonContext.Default.RegisterUserRequest));
+        var response = await _httpHttpClient.PostAsync(
+            "api/Users/register",
+            JsonContent.Create(request, ApiJsonContext.Default.RegisterUserRequest)
+        );
 
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync();
-            return $"Registration failed: {response.StatusCode}. {errorBody}";
+            return await ReadResponseAsync(response, "Registration failed.");
         }
         var result = await response.Content.ReadFromJsonAsync(ApiJsonContext.Default.AuthResponse);
         if (result != null)
@@ -92,16 +111,15 @@ public class ApiClient
 
     public async Task<string> LoginAsync(string username, string password)
     {
-        var request = new LoginUserRequest
-        {
-            Username = username,
-            Password = password
-        };
-        var response = await _httpHttpClient.PostAsync("api/Users/login", JsonContent.Create(request, ApiJsonContext.Default.LoginUserRequest));
+        var request = new LoginUserRequest { Username = username, Password = password };
+        var response = await _httpHttpClient.PostAsync(
+            "api/Users/login",
+            JsonContent.Create(request, ApiJsonContext.Default.LoginUserRequest)
+        );
 
         if (!response.IsSuccessStatusCode)
         {
-            return $"Login failed: {response.StatusCode}";
+            return await ReadResponseAsync(response, "Login failed.");
         }
 
         var result = await response.Content.ReadFromJsonAsync(ApiJsonContext.Default.AuthResponse);
@@ -115,93 +133,116 @@ public class ApiClient
 
     public async Task<string> GetQuestionsAsync(int page = 1, int pageSize = 10)
     {
-        var response = await _httpHttpClient.GetAsync($"api/Questions?page={page}&pageSize={pageSize}");
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        var response = await _httpHttpClient.GetAsync(
+            $"api/Questions?page={page}&pageSize={pageSize}"
+        );
+        return await ReadResponseAsync(response, "Failed to load questions.");
     }
 
     public async Task<string> GetQuestionAsync(Guid id)
     {
         var response = await _httpHttpClient.GetAsync($"api/Questions/{id}");
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            return "Question not found.";
-        }
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return await ReadResponseAsync(response, "Question not found.");
     }
 
-    public async Task<string> CreateQuestionAsync(string title, string description, List<Guid>? topicIds = null, bool isAnonymous = false)
+    public async Task<string> CreateQuestionAsync(
+        string title,
+        string description,
+        List<Guid>? topicIds = null,
+        bool isAnonymous = false
+    )
     {
-        EnsureLoggedIn();
+        if (!EnsureLoggedIn(out var error))
+        {
+            return error;
+        }
         var request = new CreateQuestionRequest
         {
             Title = title,
             Description = description,
             TopicIds = topicIds,
-            IsAnonymous = isAnonymous
+            IsAnonymous = isAnonymous,
         };
-        var response = await _httpHttpClient.PostAsync("api/Questions", JsonContent.Create(request, ApiJsonContext.Default.CreateQuestionRequest));
+        var response = await _httpHttpClient.PostAsync(
+            "api/Questions",
+            JsonContent.Create(request, ApiJsonContext.Default.CreateQuestionRequest)
+        );
 
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return await ReadResponseAsync(response, "Failed to create question.");
     }
 
     public async Task<string> GetAnswersAsync(Guid questionId, int page = 1, int pageSize = 10)
     {
-        var response = await _httpHttpClient.GetAsync($"api/questions/{questionId}/Answers?page={page}&pageSize={pageSize}");
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            return "Question not found.";
-        }
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        var response = await _httpHttpClient.GetAsync(
+            $"api/questions/{questionId}/Answers?page={page}&pageSize={pageSize}"
+        );
+        return await ReadResponseAsync(response, "Question not found.");
     }
 
-    public async Task<string> CreateAnswerAsync(Guid questionId, string content, bool isAnonymous = false)
+    public async Task<string> CreateAnswerAsync(
+        Guid questionId,
+        string content,
+        bool isAnonymous = false
+    )
     {
-        EnsureLoggedIn();
-        var request = new CreateAnswerRequest
+        if (!EnsureLoggedIn(out var error))
         {
-            Content = content,
-            IsAnonymous = isAnonymous
-        };
-        var response = await _httpHttpClient.PostAsync($"api/questions/{questionId}/Answers", JsonContent.Create(request, ApiJsonContext.Default.CreateAnswerRequest));
+            return error;
+        }
+        var request = new CreateAnswerRequest { Content = content, IsAnonymous = isAnonymous };
+        var response = await _httpHttpClient.PostAsync(
+            $"api/questions/{questionId}/Answers",
+            JsonContent.Create(request, ApiJsonContext.Default.CreateAnswerRequest)
+        );
 
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return await ReadResponseAsync(response, "Failed to create answer.");
     }
 
     public async Task<string> VoteAnswerAsync(Guid questionId, Guid answerId, VoteType voteType)
     {
-        EnsureLoggedIn();
-        var request = new VoteAnswerRequest
+        if (!EnsureLoggedIn(out var error))
         {
-            VoteType = voteType
-        };
-        var response = await _httpHttpClient.PostAsync($"api/questions/{questionId}/answers/{answerId}/vote", JsonContent.Create(request, ApiJsonContext.Default.VoteAnswerRequest));
-
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            return "Answer or Question not found.";
+            return error;
         }
+        var request = new VoteAnswerRequest { VoteType = voteType };
+        var response = await _httpHttpClient.PostAsync(
+            $"api/questions/{questionId}/answers/{answerId}/vote",
+            JsonContent.Create(request, ApiJsonContext.Default.VoteAnswerRequest)
+        );
 
-        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
-        {
-             var error = await response.Content.ReadAsStringAsync();
-             return $"Vote failed: {error}";
-        }
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return await ReadResponseAsync(response, "Failed to vote on answer.");
     }
 
-    private void EnsureLoggedIn()
+    private static async Task<string> ReadResponseAsync(
+        HttpResponseMessage response,
+        string fallbackMessage
+    )
+    {
+        var body = await response.Content.ReadAsStringAsync();
+        if (response.IsSuccessStatusCode)
+        {
+            return body;
+        }
+
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            return body;
+        }
+
+        return fallbackMessage;
+    }
+
+    private bool EnsureLoggedIn(out string error)
     {
         if (_tokenInfo == null || string.IsNullOrEmpty(_tokenInfo.Token))
         {
-            throw new InvalidOperationException("You must be logged in to perform this action. Please use login_user tool first.");
+            error =
+                "You must be logged in to perform this action. Please use login_user tool first.";
+            return false;
         }
+
+        error = string.Empty;
+        return true;
     }
 }
 
@@ -213,7 +254,4 @@ public class ApiClient
 [JsonSerializable(typeof(CreateQuestionRequest))]
 [JsonSerializable(typeof(CreateAnswerRequest))]
 [JsonSerializable(typeof(VoteAnswerRequest))]
-internal partial class ApiJsonContext : JsonSerializerContext
-{
-}
-
+internal partial class ApiJsonContext : JsonSerializerContext { }
