@@ -13,7 +13,9 @@ builder.Services.AddMudServices();
 builder.Services.AddMudMarkdownServices();
 
 // Read API base URL from configuration (wwwroot/appsettings.json)
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"];
+if (string.IsNullOrWhiteSpace(apiBaseUrl) || apiBaseUrl == "__API_BASE_URL__")
+    apiBaseUrl = builder.HostEnvironment.BaseAddress;
 
 builder.Services.AddScoped(sp => new HttpClient
 {

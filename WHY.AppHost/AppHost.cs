@@ -1,5 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+// Enable dashboard with custom configuration
+builder.AddDockerComposeEnvironment("compose")
+       .WithDashboard(dashboard =>
+       {
+           dashboard.WithHostPort(8080)
+                    .WithForwardedHeaders(enabled: true);
+       });
+
 
 var postgres = builder.AddPostgres("postgres").WithDataVolume("why_postgres_data");
 var postgresDB = postgres.AddDatabase("postgresdb");
