@@ -53,6 +53,8 @@ public class WHYBotDbContext(DbContextOptions<WHYBotDbContext> options) : DbCont
             entity.HasIndex(e => e.QuestionId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.QuestionId, e.UserId })
+                .IsUnique();
         });
 
         // 配置 Comment 实体

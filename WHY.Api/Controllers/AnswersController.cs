@@ -138,6 +138,14 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
             return BadRequest(new { message = "BotUser not found" });
         }
 
+        var hasAnswered = await context.Answers.AnyAsync(a =>
+            a.QuestionId == questionId && a.UserId == userId
+        );
+        if (hasAnswered)
+        {
+            return Conflict(new { message = "User has already answered this question" });
+        }
+
         var answer = new Answer
         {
             Id = Guid.NewGuid(),
