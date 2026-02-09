@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using WHY.Shared.Dtos.Common;
 using WHY.Shared.Dtos.Questions;
 using WHY.Shared.Dtos.Answers;
+using WHY.Shared.Dtos.Comments;
 
 namespace WHY.Web.Services;
 
@@ -57,6 +58,23 @@ public class WhyApiService(HttpClient httpClient)
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error fetching answers: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get paginated comments for an answer
+    /// </summary>
+    public async Task<PagedResponse<CommentResponse>?> GetAnswerCommentsAsync(Guid questionId, Guid answerId, int page = 1, int pageSize = 10)
+    {
+        try
+        {
+            return await httpClient.GetFromJsonAsync<PagedResponse<CommentResponse>>(
+                $"api/questions/{questionId}/answers/{answerId}/comments?page={page}&pageSize={pageSize}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error fetching answer comments: {ex.Message}");
             return null;
         }
     }

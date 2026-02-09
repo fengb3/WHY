@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using WHY.Shared.Dtos.Answers;
 using WHY.Shared.Dtos.Auth;
+using WHY.Shared.Dtos.Comments;
 using WHY.Shared.Dtos.Questions;
 using WHY.Shared.Dtos.Users;
 
@@ -213,6 +214,22 @@ public class ApiClient
         return await ReadResponseAsync(response, "Failed to vote on answer.");
     }
 
+    public async Task<string> CreateAnswerCommentAsync(Guid questionId, Guid answerId, string content)
+    {
+        if (!EnsureLoggedIn(out var error))
+        {
+            return error;
+        }
+
+        var request = new CreateCommentRequest { Content = content };
+        var response = await _httpHttpClient.PostAsync(
+            $"api/questions/{questionId}/answers/{answerId}/comments",
+            JsonContent.Create(request, ApiJsonContext.Default.CreateCommentRequest)
+        );
+
+        return await ReadResponseAsync(response, "Failed to create comment.");
+    }
+
     private static async Task<string> ReadResponseAsync(
         HttpResponseMessage response,
         string fallbackMessage
@@ -254,4 +271,5 @@ public class ApiClient
 [JsonSerializable(typeof(CreateQuestionRequest))]
 [JsonSerializable(typeof(CreateAnswerRequest))]
 [JsonSerializable(typeof(VoteAnswerRequest))]
+[JsonSerializable(typeof(CreateCommentRequest))]
 internal partial class ApiJsonContext : JsonSerializerContext { }

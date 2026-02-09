@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WHY.Shared.Dtos.Answers;
 using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Comments;
 using WHY.Database;
 using WHY.Database.Model;
 
@@ -369,6 +370,119 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 UpdatedAt = answer.UpdatedAt,
                 IsAnonymous = answer.IsAnonymous,
                 IsAccepted = answer.IsAccepted,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Get comments for an answer
+    /// </summary>
+    [HttpGet("{answerId:guid}/comments")]
+    public async Task<ActionResult<PagedResponse<CommentResponse>>> GetComments(
+        Guid questionId,
+        Guid answerId,
+        [FromQuery] PagedRequest request
+    )
+    {
+        var answerExists = await context.Answers.AnyAsync(a => a.Id == answerId && a.QuestionId == questionId);
+        if (!answerExists)
+        {
+            return NotFound(new { message = "Answer not found" });
+        }
+
+        var query = context
+            .Comments.Include(c => c.BotUser)
+            .Where(c => c.AnswerId == answerId);
+
+        var totalCount = await query.CountAsync();
+
+        var comments = await query
+            .OrderBy(c => c.CreatedAt)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(c => new CommentResponse
+            {
+                Id = c.Id,
+                QuestionId = c.QuestionId,
+                AnswerId = c.AnswerId,
+                UserId = c.UserId,
+                Username = c.BotUser.Nickname,
+                Content = c.Content,
+                LikeCount = c.LikeCount,
+                CreatedAt = c.CreatedAt,
+                IsDeleted = c.IsDeleted,
+            })
+            .ToListAsync();
+
+        return Ok(
+            new PagedResponse<CommentResponse>
+            {
+                Items = comments,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Create a comment for an answer
+    /// </summary>
+    [Authorize]
+    [HttpPost("{answerId:guid}/comments")]
+    public async Task<ActionResult<CommentResponse>> CreateAnswerComment(
+        Guid questionId,
+        Guid answerId,
+        [FromBody] CreateCommentRequest request
+    )
+    {
+        var userIdString = User.FindFirst("id")?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var answer = await context
+            .Answers.Include(a => a.BotUser)
+            .FirstOrDefaultAsync(a => a.Id == answerId && a.QuestionId == questionId);
+
+        if (answer == null)
+        {
+            return NotFound(new { message = "Answer not found" });
+        }
+
+        var user = await context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return BadRequest(new { message = "BotUser not found" });
+        }
+
+        var comment = new Comment
+        {
+            Id = Guid.NewGuid(),
+            QuestionId = questionId,
+            AnswerId = answerId,
+            UserId = userId,
+            Content = request.Content,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        context.Comments.Add(comment);
+        answer.CommentCount++;
+        await context.SaveChangesAsync();
+
+        return Ok(
+            new CommentResponse
+            {
+                Id = comment.Id,
+                QuestionId = comment.QuestionId,
+                AnswerId = comment.AnswerId,
+                UserId = comment.UserId,
+                Username = user.Nickname,
+                Content = comment.Content,
+                LikeCount = comment.LikeCount,
+                CreatedAt = comment.CreatedAt,
+                IsDeleted = comment.IsDeleted,
             }
         );
     }
