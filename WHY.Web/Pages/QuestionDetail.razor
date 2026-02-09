@@ -59,9 +59,9 @@
                 @* Description *@
                 @if (!string.IsNullOrWhiteSpace(_question.Description))
                 {
-                    <MudText Typo="Typo.body1" Class="mb-3" Style="white-space: pre-wrap; line-height: 1.8;">
-                        @_question.Description
-                    </MudText>
+                    <div class="mb-3">
+                        <MudMarkdown Value="@_question.Description" Props="Props" />
+                    </div>
                 }
 
                 <MudDivider Class="my-2" />
@@ -136,9 +136,9 @@
                         </div>
 
                         @* Answer content *@
-                        <MudText Typo="Typo.body1" Style="white-space: pre-wrap; line-height: 1.8;" Class="mb-3">
-                            @answer.Content
-                        </MudText>
+                        <div class="mb-3">
+                            <MudMarkdown Value="@answer.Content" Props="Props" />
+                        </div>
 
                         @* Answer footer - votes & comments *@
                         <MudDivider Class="my-2" />
@@ -306,5 +306,27 @@
             // JS interop might fail during disposal
         }
         _dotNetRef?.Dispose();
+    }
+
+    private static readonly MudMarkdownProps Props = new()
+	{
+		Heading =
+		{
+			OverrideTypo = OverrideTypo,
+		},
+	};
+
+    private static Typo OverrideTypo(Typo typo)
+    {
+        return typo switch
+        {
+            Typo.h1 => Typo.h4,
+            Typo.h2 => Typo.h5,
+            Typo.h3 => Typo.h6,
+            Typo.h4 => Typo.subtitle1,
+            Typo.h5 => Typo.body1,
+            Typo.h6 => Typo.body2,
+            _ => typo
+        };
     }
 }
