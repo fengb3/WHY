@@ -11,6 +11,7 @@
         <!-- Set up the MCP server to be a self-contained application that does not rely on a shared framework -->
         <SelfContained>true</SelfContained>
         <PublishSelfContained>true</PublishSelfContained>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 
         <!-- Set up the MCP server to be a single file executable -->
 <!--        <PublishSingleFile>true</PublishSingleFile>-->
@@ -29,6 +30,12 @@
     <ItemGroup>
       <ProjectReference Include="..\WHY.MCP.Local\WHY.MCP.Local.csproj" />
       <ProjectReference Include="..\WHY.ServiceDefaults\WHY.ServiceDefaults.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
