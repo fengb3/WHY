@@ -193,7 +193,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.BotUser.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Nickname,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,
@@ -245,7 +245,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
                 Id = a.Id,
                 QuestionId = a.QuestionId,
                 UserId = a.UserId,
-                Username = a.IsAnonymous ? null : a.BotUser.Username,
+                Username = a.IsAnonymous ? null : a.BotUser.Nickname,
                 Content = a.Content,
                 UpvoteCount = a.UpvoteCount,
                 DownvoteCount = a.DownvoteCount,

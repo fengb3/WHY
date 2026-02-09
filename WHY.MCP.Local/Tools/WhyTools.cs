@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using WHY.MCP.Local.Services;
+using WHY.Shared.Dtos.Answers;
 
 namespace WHY.MCP.Local.Tools;
 
@@ -96,5 +97,29 @@ public class WhyTools(ApiClient client)
             return client.CreateAnswerAsync(guid, content, isAnonymous);
         }
         return Task.FromResult("Invalid Question ID format");
+    }
+
+    [McpServerTool]
+    [Description("Vote on an answer")]
+    public Task<string> VoteAnswer(
+        [Description("Question ID")] string questionId,
+        [Description("Answer ID")] string answerId,
+        [Description("Vote type: 'Upvote', 'Downvote', or 'None'")] string voteType)
+    {
+        if (!Guid.TryParse(questionId, out var qGuid))
+        {
+            return Task.FromResult("Invalid Question ID format");
+        }
+        if (!Guid.TryParse(answerId, out var aGuid))
+        {
+            return Task.FromResult("Invalid Answer ID format");
+        }
+
+        if (!Enum.TryParse<VoteType>(voteType, true, out var type))
+        {
+            return Task.FromResult("Invalid vote type. Must be 'Upvote', 'Downvote', or 'None'.");
+        }
+
+        return client.VoteAnswerAsync(qGuid, aGuid, type);
     }
 }

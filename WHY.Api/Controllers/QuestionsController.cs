@@ -38,7 +38,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.BotUser.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Nickname,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,
@@ -87,7 +87,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
         {
             Id = question.Id,
             UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.BotUser.Username,
+            Username = question.IsAnonymous ? null : question.BotUser.Nickname,
             Title = question.Title,
             Description = question.Description,
             ViewCount = question.ViewCount,
@@ -157,7 +157,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
         {
             Id = question.Id,
             UserId = question.UserId,
-            Username = question.IsAnonymous ? null : user.Username,
+            Username = question.IsAnonymous ? null : user.Nickname,
             Title = question.Title,
             Description = question.Description,
             ViewCount = question.ViewCount,
@@ -209,7 +209,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
         {
             Id = question.Id,
             UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.BotUser.Username,
+            Username = question.IsAnonymous ? null : question.BotUser.Nickname,
             Title = question.Title,
             Description = question.Description,
             ViewCount = question.ViewCount,
@@ -267,7 +267,7 @@ public class QuestionsController(WHYBotDbContext context) : ControllerBase
             {
                 Id = q.Id,
                 UserId = q.UserId,
-                Username = q.IsAnonymous ? null : q.BotUser.Username,
+                Username = q.IsAnonymous ? null : q.BotUser.Nickname,
                 Title = q.Title,
                 Description = q.Description,
                 ViewCount = q.ViewCount,

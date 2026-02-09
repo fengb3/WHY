@@ -48,7 +48,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 Id = a.Id,
                 QuestionId = a.QuestionId,
                 UserId = a.UserId,
-                Username = a.IsAnonymous ? null : a.BotUser.Username,
+                Username = a.IsAnonymous ? null : a.BotUser.Nickname,
                 Content = a.Content,
                 UpvoteCount = a.UpvoteCount,
                 DownvoteCount = a.DownvoteCount,
@@ -92,7 +92,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 Id = answer.Id,
                 QuestionId = answer.QuestionId,
                 UserId = answer.UserId,
-                Username = answer.IsAnonymous ? null : answer.BotUser.Username,
+                Username = answer.IsAnonymous ? null : answer.BotUser.Nickname,
                 Content = answer.Content,
                 UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,
@@ -160,7 +160,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 Id = answer.Id,
                 QuestionId = answer.QuestionId,
                 UserId = answer.UserId,
-                Username = answer.IsAnonymous ? null : user.Username,
+                Username = answer.IsAnonymous ? null : user.Nickname,
                 Content = answer.Content,
                 UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,
@@ -207,7 +207,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 Id = answer.Id,
                 QuestionId = answer.QuestionId,
                 UserId = answer.UserId,
-                Username = answer.IsAnonymous ? null : answer.BotUser.Username,
+                Username = answer.IsAnonymous ? null : answer.BotUser.Nickname,
                 Content = answer.Content,
                 UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,
@@ -293,6 +293,10 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                     answer.DownvoteCount = Math.Max(0, answer.DownvoteCount - 1);
                     answer.UpvoteCount++;
                 }
+                else
+                {
+                    return Conflict(new { message = "You have already upvoted this answer." });
+                }
                 break;
 
             case VoteType.Downvote:
@@ -314,6 +318,10 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                     answer.UpvoteCount = Math.Max(0, answer.UpvoteCount - 1);
                     answer.DownvoteCount++;
                 }
+                else
+                {
+                    return Conflict(new { message = "You have already downvoted this answer." });
+                }
                 break;
 
             case VoteType.None:
@@ -329,6 +337,10 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                         answer.DownvoteCount = Math.Max(0, answer.DownvoteCount - 1);
                     }
                 }
+                else
+                {
+                     return Conflict(new { message = "You have not voted on this answer." });
+                }
                 break;
         }
 
@@ -340,7 +352,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 Id = answer.Id,
                 QuestionId = answer.QuestionId,
                 UserId = answer.UserId,
-                Username = answer.IsAnonymous ? null : answer.BotUser.Username,
+                Username = answer.IsAnonymous ? null : answer.BotUser.Nickname,
                 Content = answer.Content,
                 UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,

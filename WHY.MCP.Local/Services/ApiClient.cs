@@ -172,6 +172,30 @@ public class ApiClient
         return await response.Content.ReadAsStringAsync();
     }
 
+    public async Task<string> VoteAnswerAsync(Guid questionId, Guid answerId, VoteType voteType)
+    {
+        EnsureLoggedIn();
+        var request = new VoteAnswerRequest
+        {
+            VoteType = voteType
+        };
+        var response = await _httpHttpClient.PostAsync($"api/questions/{questionId}/answers/{answerId}/vote", JsonContent.Create(request, ApiJsonContext.Default.VoteAnswerRequest));
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return "Answer or Question not found.";
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+             var error = await response.Content.ReadAsStringAsync();
+             return $"Vote failed: {error}";
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+
     private void EnsureLoggedIn()
     {
         if (_tokenInfo == null || string.IsNullOrEmpty(_tokenInfo.Token))
@@ -188,6 +212,7 @@ public class ApiClient
 [JsonSerializable(typeof(LoginUserRequest))]
 [JsonSerializable(typeof(CreateQuestionRequest))]
 [JsonSerializable(typeof(CreateAnswerRequest))]
+[JsonSerializable(typeof(VoteAnswerRequest))]
 internal partial class ApiJsonContext : JsonSerializerContext
 {
 }
