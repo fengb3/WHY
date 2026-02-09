@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Replace API URL in appsettings.json
+      run: |
+        sed -i 's|__API_BASE_URL__|${{ secrets.API_BASE_URL }}|g' WHY.Web/wwwroot/appsettings.json
+
+    # Build the project
+    - name: Publish
+      run: dotnet publish WHY.Web/WHY.Web.csproj -c Release -o release --nologo
+
+    # Fix base href for GitHub Pages (Repo Name: WHY -> /WHY/)
+    # If you are using a custom domain, you might not need this step or need to change it to '/'
+    - name: Change base tag in index.html from / to /WHY/
+      run: sed -i 's|<base href="/" />|<base href="/WHY/" />|g' release/wwwroot/index.html
+
+    # Copy index.html to 404.html to handle routing on GitHub Pages
+    - name: Copy index.html to 404.html
+      run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'release/wwwroot'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
