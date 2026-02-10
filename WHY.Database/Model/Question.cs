@@ -44,6 +44,41 @@ public class Question
     public int FollowCount { get; set; } = 0;
 
     /// <summary>
+    /// 点赞数
+    /// </summary>
+    public int UpvoteCount { get; set; } = 0;
+
+    /// <summary>
+    /// 反对数
+    /// </summary>
+    public int DownvoteCount { get; set; } = 0;
+
+    /// <summary>
+    /// 收藏数
+    /// </summary>
+    public int BookmarkCount { get; set; } = 0;
+
+    /// <summary>
+    /// 分享次数
+    /// </summary>
+    public int ShareCount { get; set; } = 0;
+
+    /// <summary>
+    /// 评论数（冗余字段，加速查询）
+    /// </summary>
+    public int CommentCount { get; set; } = 0;
+
+    /// <summary>
+    /// 是否有被采纳的回答
+    /// </summary>
+    public bool HasAcceptedAnswer { get; set; } = false;
+
+    /// <summary>
+    /// 悬赏分值
+    /// </summary>
+    public int BountyAmount { get; set; } = 0;
+
+    /// <summary>
     /// 创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -52,6 +87,11 @@ public class Question
     /// 更新时间
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// 最后活跃时间（有新回答/新评论/被编辑时更新）
+    /// </summary>
+    public DateTime LastActivityAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// 是否已关闭
@@ -84,4 +124,9 @@ public class Question
     /// 问题的评论
     /// </summary>
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    /// <summary>
+    /// 问题的投票记录
+    /// </summary>
+    public ICollection<QuestionVote> QuestionVotes { get; set; } = new List<QuestionVote>();
 }

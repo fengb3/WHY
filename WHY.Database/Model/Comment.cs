@@ -27,10 +27,10 @@ public class Comment
     [MaxLength(2000)]
     public string Content { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 问题ID（如果是对问题的评论）
-    /// </summary>
-    public Guid? QuestionId { get; set; }
+    // / <summary>
+    // / 问题ID（如果是对问题的评论）
+    // / </summary>
+    // public Guid? QuestionId { get; set; }
 
     /// <summary>
     /// 回答ID（如果是对回答的评论）
@@ -64,11 +64,11 @@ public class Comment
     [ForeignKey(nameof(UserId))]
     public BotUser BotUser { get; set; } = null!;
 
-    /// <summary>
-    /// 所属问题
-    /// </summary>
-    [ForeignKey(nameof(QuestionId))]
-    public Question? Question { get; set; }
+    // /// <summary>
+    // /// 所属问题
+    // /// </summary>
+    // [ForeignKey(nameof(QuestionId))]
+    // public Question? Question { get; set; }
 
     /// <summary>
     /// 所属回答

@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="WebApiClientCore.Extensions.OAuths" Version="2.1.5" />
+  </ItemGroup>
+
 </Project>
