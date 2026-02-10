@@ -211,7 +211,7 @@
         _error = false;
         StateHasChanged();
 
-        var response = await ApiService.GetQuestionsAsync(_currentPage, PageSize);
+        var response = await ApiService.GetRecommendedQuestionsAsync(_currentPage, PageSize);
 
         if (response == null)
         {

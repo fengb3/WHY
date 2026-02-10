@@ -12,18 +12,18 @@ namespace WHY.Web.Services;
 public class WhyApiService(HttpClient httpClient)
 {
     /// <summary>
-    /// Get paginated questions
+    /// Get recommended questions ordered by trending score
     /// </summary>
-    public async Task<PagedResponse<QuestionResponse>?> GetQuestionsAsync(int page = 1, int pageSize = 20)
+    public async Task<PagedResponse<QuestionResponse>?> GetRecommendedQuestionsAsync(int page = 1, int pageSize = 20)
     {
         try
         {
             return await httpClient.GetFromJsonAsync<PagedResponse<QuestionResponse>>(
-                $"api/questions?page={page}&pageSize={pageSize}");
+                $"api/questions/recommended?page={page}&pageSize={pageSize}");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error fetching questions: {ex.Message}");
+            Console.Error.WriteLine($"Error fetching recommended questions: {ex.Message}");
             return null;
         }
     }

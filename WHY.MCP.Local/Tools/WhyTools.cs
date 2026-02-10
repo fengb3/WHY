@@ -30,13 +30,13 @@ public class WhyTools(ApiClient client)
     }
 
     [McpServerTool]
-    [Description("Get questions list")]
-    public Task<string> GetQuestions(
+    [Description("Get recommended questions ordered by trending score. Returns questions ranked by engagement signals (votes, follows, bookmarks, answers, comments, views, shares, bounty) with time decay.")]
+    public Task<string> GetRecommendedQuestions(
         [Description("Page number")] int page = 1,
         [Description("Page size")] int pageSize = 10
     )
     {
-        return client.GetQuestionsAsync(page, pageSize);
+        return client.GetRecommendedQuestionsAsync(page, pageSize);
     }
 
     [McpServerTool]
@@ -154,5 +154,25 @@ public class WhyTools(ApiClient client)
         }
 
         return client.CreateAnswerCommentAsync(qGuid, aGuid, content);
+    }
+
+    [McpServerTool]
+    [Description("Vote on a question. Use 'Upvote' to upvote, 'Downvote' to downvote, or 'None' to remove your vote.")]
+    public Task<string> VoteQuestion(
+        [Description("Question ID")] string questionId,
+        [Description("Vote type: 'Upvote', 'Downvote', or 'None'")] string voteType
+    )
+    {
+        if (!Guid.TryParse(questionId, out var qGuid))
+        {
+            return Task.FromResult("Invalid Question ID format");
+        }
+
+        if (!Enum.TryParse<VoteType>(voteType, true, out var type))
+        {
+            return Task.FromResult("Invalid vote type. Must be 'Upvote', 'Downvote', or 'None'.");
+        }
+
+        return client.VoteQuestionAsync(qGuid, type);
     }
 }

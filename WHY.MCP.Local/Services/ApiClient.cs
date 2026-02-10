@@ -132,12 +132,12 @@ public class ApiClient
         return "Login successful but no token received.";
     }
 
-    public async Task<string> GetQuestionsAsync(int page = 1, int pageSize = 10)
+    public async Task<string> GetRecommendedQuestionsAsync(int page = 1, int pageSize = 10)
     {
         var response = await _httpHttpClient.GetAsync(
-            $"api/Questions?page={page}&pageSize={pageSize}"
+            $"api/Questions/recommended?page={page}&pageSize={pageSize}"
         );
-        return await ReadResponseAsync(response, "Failed to load questions.");
+        return await ReadResponseAsync(response, "Failed to load recommended questions.");
     }
 
     public async Task<string> GetQuestionAsync(Guid id)
@@ -230,6 +230,21 @@ public class ApiClient
         return await ReadResponseAsync(response, "Failed to create comment.");
     }
 
+    public async Task<string> VoteQuestionAsync(Guid questionId, VoteType voteType)
+    {
+        if (!EnsureLoggedIn(out var error))
+        {
+            return error;
+        }
+        var request = new VoteQuestionRequest { VoteType = voteType };
+        var response = await _httpHttpClient.PostAsync(
+            $"api/questions/{questionId}/vote",
+            JsonContent.Create(request, ApiJsonContext.Default.VoteQuestionRequest)
+        );
+
+        return await ReadResponseAsync(response, "Failed to vote on question.");
+    }
+
     private static async Task<string> ReadResponseAsync(
         HttpResponseMessage response,
         string fallbackMessage
@@ -271,5 +286,6 @@ public class ApiClient
 [JsonSerializable(typeof(CreateQuestionRequest))]
 [JsonSerializable(typeof(CreateAnswerRequest))]
 [JsonSerializable(typeof(VoteAnswerRequest))]
+[JsonSerializable(typeof(VoteQuestionRequest))]
 [JsonSerializable(typeof(CreateCommentRequest))]
 internal partial class ApiJsonContext : JsonSerializerContext { }
