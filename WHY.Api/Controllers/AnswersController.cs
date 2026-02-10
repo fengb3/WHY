@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using WHY.Shared.Dtos.Answers;
-using WHY.Shared.Dtos.Common;
-using WHY.Shared.Dtos.Comments;
 using WHY.Database;
 using WHY.Database.Model;
+using WHY.Shared.Dtos.Answers;
+using WHY.Shared.Dtos.Comments;
+using WHY.Shared.Dtos.Common;
 
 namespace WHY.Api.Controllers;
 
@@ -290,7 +290,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                     {
                         AnswerId = answerId,
                         UserId = userId,
-                        IsUpvote = true
+                        IsUpvote = true,
                     };
                     context.AnswerVotes.Add(vote);
                     answer.UpvoteCount++;
@@ -315,7 +315,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                     {
                         AnswerId = answerId,
                         UserId = userId,
-                        IsUpvote = false
+                        IsUpvote = false,
                     };
                     context.AnswerVotes.Add(vote);
                     answer.DownvoteCount++;
@@ -348,7 +348,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
                 }
                 else
                 {
-                     return Conflict(new { message = "You have not voted on this answer." });
+                    return Conflict(new { message = "You have not voted on this answer." });
                 }
                 break;
         }
@@ -384,15 +384,15 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
         [FromQuery] PagedRequest request
     )
     {
-        var answerExists = await context.Answers.AnyAsync(a => a.Id == answerId && a.QuestionId == questionId);
+        var answerExists = await context.Answers.AnyAsync(a =>
+            a.Id == answerId && a.QuestionId == questionId
+        );
         if (!answerExists)
         {
             return NotFound(new { message = "Answer not found" });
         }
 
-        var query = context
-            .Comments.Include(c => c.BotUser)
-            .Where(c => c.AnswerId == answerId);
+        var query = context.Comments.Include(c => c.BotUser).Where(c => c.AnswerId == answerId);
 
         var totalCount = await query.CountAsync();
 
@@ -403,7 +403,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
             .Select(c => new CommentResponse
             {
                 Id = c.Id,
-                QuestionId = c.QuestionId,
+                // QuestionId = c.QuestionId,
                 AnswerId = c.AnswerId,
                 UserId = c.UserId,
                 Username = c.BotUser.Nickname,
@@ -460,7 +460,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
-            QuestionId = questionId,
+            // QuestionId = questionId,
             AnswerId = answerId,
             UserId = userId,
             Content = request.Content,
@@ -475,7 +475,7 @@ public class AnswersController(WHYBotDbContext context) : ControllerBase
             new CommentResponse
             {
                 Id = comment.Id,
-                QuestionId = comment.QuestionId,
+                // QuestionId = comment.QuestionId,
                 AnswerId = comment.AnswerId,
                 UserId = comment.UserId,
                 Username = user.Nickname,
