@@ -27,10 +27,10 @@ public interface IWhyMcpApi
 public interface IWhyMcpAuthApi
 {
     [HttpPost("api/Users/register")]
-    ITask<AuthResponse> RegisterAsync([JsonContent] RegisterUserRequest request);
+    Task<AuthResponse> RegisterAsync([JsonContent] RegisterUserRequest request);
 
     [HttpPost("api/Users/login")]
-    ITask<AuthResponse> LoginAsync([JsonContent] LoginUserRequest request);
+    Task<AuthResponse> LoginAsync([JsonContent] LoginUserRequest request);
 }
 
 /// <summary>
@@ -39,18 +39,18 @@ public interface IWhyMcpAuthApi
 public interface IWhyMcpQuestionApi
 {
     [HttpGet("api/Questions/recommended")]
-    ITask<PagedResponse<QuestionResponse>> GetRecommendedQuestionsAsync(
+    Task<PagedResponse<QuestionResponse>> GetRecommendedQuestionsAsync(
         [PathQuery] PagedRequest request
     );
 
     [HttpGet("api/Questions/{id}")]
-    ITask<QuestionResponse> GetQuestionAsync(Guid id);
+    Task<QuestionResponse> GetQuestionAsync(Guid id);
 
     [HttpPost("api/Questions")]
-    ITask<QuestionResponse> CreateQuestionAsync([JsonContent] CreateQuestionRequest request);
+    Task<QuestionResponse> CreateQuestionAsync([JsonContent] CreateQuestionRequest request);
 
     [HttpPost("api/Questions/{id}/vote")]
-    ITask<QuestionResponse> VoteQuestionAsync(Guid id, [JsonContent] VoteQuestionRequest request);
+    Task<QuestionResponse> VoteQuestionAsync(Guid id, [JsonContent] VoteQuestionRequest request);
 }
 
 /// <summary>
@@ -59,19 +59,19 @@ public interface IWhyMcpQuestionApi
 public interface IWhyMcpAnswerApi
 {
     [HttpGet("api/questions/{questionId}/Answers")]
-    ITask<PagedResponse<AnswerResponse>> GetAnswersAsync(
+    Task<PagedResponse<AnswerResponse>> GetAnswersAsync(
         Guid questionId,
         [PathQuery] PagedRequest request
     );
 
     [HttpPost("api/questions/{questionId}/Answers")]
-    ITask<AnswerResponse> CreateAnswerAsync(
+    Task<AnswerResponse> CreateAnswerAsync(
         Guid questionId,
         [JsonContent] CreateAnswerRequest request
     );
 
     [HttpPost("api/questions/{questionId}/Answers/{answerId}/vote")]
-    ITask<AnswerResponse> VoteAnswerAsync(
+    Task<AnswerResponse> VoteAnswerAsync(
         Guid questionId,
         Guid answerId,
         [JsonContent] VoteAnswerRequest request
@@ -84,14 +84,14 @@ public interface IWhyMcpAnswerApi
 public interface IWhyMcpCommentApi
 {
     [HttpGet("api/questions/{questionId}/Answers/{answerId}/comments")]
-    ITask<PagedResponse<CommentResponse>> GetCommentsAsync(
+    Task<PagedResponse<CommentResponse>> GetCommentsAsync(
         Guid questionId,
         Guid answerId,
         [PathQuery] PagedRequest request
     );
 
     [HttpPost("api/questions/{questionId}/Answers/{answerId}/comments")]
-    ITask<CommentResponse> CreateCommentAsync(
+    Task<CommentResponse> CreateCommentAsync(
         Guid questionId,
         Guid answerId,
         [JsonContent] CreateCommentRequest request
@@ -106,17 +106,13 @@ public interface IWhyMcpCommentApi
 [JsonSerializable(typeof(VoteAnswerRequest))]
 [JsonSerializable(typeof(VoteQuestionRequest))]
 [JsonSerializable(typeof(CreateCommentRequest))]
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-internal partial class TokenJsonContext : JsonSerializerContext { }
 
-// [JsonSerializable(typeof(TokenInfo))]
-// [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]}    }        }            _logger.LogWarning(ex, "Failed to delete token file");
-// {        catch (Exception ex)        }
-// File.Delete(TokenFilePath); if (File.Exists(TokenFilePath)) { try        _tokenInfo = null; {    public void ClearToken()    }        }            _logger.LogWarning(ex, "Failed to load token");
-// {        catch (Exception ex)        }            }                _tokenInfo = JsonSerializer.Deserialize(json, TokenJsonContext.Default.TokenInfo); var json = File.ReadAllText(TokenFilePath);
-// { if (File.Exists(TokenFilePath)) { try {    private void LoadToken()    }        }            _logger.LogError(ex, "Failed to save token");
-// {        catch (Exception ex)        }
-// _tokenInfo = tokenInfo;            ); JsonSerializer.Serialize(tokenInfo, TokenJsonContext.Default.TokenInfo)                TokenFilePath, File.WriteAllText(            var tokenInfo = new TokenInfo { Token = token, Username = username }; Directory.CreateDirectory(dir); if (dir != null && !Directory.Exists(dir)) var dir = Path.GetDirectoryName(TokenFilePath);
-// { try {    public void SaveToken(string? token, string username)    public bool IsLoggedIn => !string.IsNullOrEmpty(_tokenInfo?.Token); public string? GetUsername() => _tokenInfo?.Username; public string? GetToken() => _tokenInfo?.Token;    }        LoadToken(); _logger = logger;
-// {    public TokenService(ILogger<TokenService> logger)        ); "token.json"            "WHY.MCP.Data",            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),        Path.Combine(    private static string TokenFilePath =>    private TokenInfo? _tokenInfo; private readonly ILogger<TokenService> _logger;
-// {public class TokenService/// </summary>/// Manages JWT token persistence (load/save from disk)/// <summary>namespace WHY.MCP.Local.Services;using WHY.Shared.Dtos.Auth;using Microsoft.Extensions.Logging;using WHY.Shared.Dtos.Answers;
+[JsonSerializable(typeof(AuthResponse))]
+[JsonSerializable(typeof(PagedResponse<QuestionResponse>))]
+[JsonSerializable(typeof(QuestionResponse))]
+[JsonSerializable(typeof(PagedResponse<AnswerResponse>))]
+[JsonSerializable(typeof(AnswerResponse))]
+[JsonSerializable(typeof(PagedResponse<CommentResponse>))]
+[JsonSerializable(typeof(CommentResponse))]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+public partial class WhyJsonSerializerContext : JsonSerializerContext { }

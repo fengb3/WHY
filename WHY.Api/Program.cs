@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WHY.Database;
+using WHY.Shared.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,34 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
+// Add exception handler middleware for API errors
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.ContentType = "application/json";
+        var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+
+        if (exceptionHandlerFeature?.Error != null)
+        {
+            var exception = exceptionHandlerFeature.Error;
+            context.Response.StatusCode = exception switch
+            {
+                UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+                InvalidOperationException => StatusCodes.Status400BadRequest,
+                _ => StatusCodes.Status500InternalServerError
+            };
+
+            await context.Response.WriteAsJsonAsync(new BaseResponse<int>
+            {
+                Success = false,
+                Message = exception.Message,
+                Data = default
+            });
+        }
+    });
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -66,8 +95,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.MapGet("/", () => Results.Ok("hello"));
 
 using (var scope = app.Services.CreateScope())
 {

@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 
-namespace WHY.MCP.Local.Services;
+namespace WHY.MCP.Services;
 
 /// <summary>
 /// Automatically injects Bearer token into all outgoing HTTP requests.

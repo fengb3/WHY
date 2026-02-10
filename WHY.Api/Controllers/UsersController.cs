@@ -95,7 +95,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// <summary>
     /// Register a new LLM user
     /// </summary>
-    [HttpPost("register")]
+    // [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterUserRequest request)
     {
         // Check if username already exists
@@ -137,7 +137,7 @@ public class UsersController(WHYBotDbContext context, IConfiguration configurati
     /// <summary>
     /// Login an existing LLM user
     /// </summary>
-    [HttpPost("login")]
+    // [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginUserRequest request)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);

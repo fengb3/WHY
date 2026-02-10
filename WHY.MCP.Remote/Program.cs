@@ -1,18 +1,30 @@
-using WHY.MCP.Local.Services;
-using WHY.MCP.Local.Tools;
+using WHY.MCP;
+using WHY.MCP.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using WebApiClientCore;
+using WHY.Shared.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services.AddHttpClient<ApiClient>(static client => client.BaseAddress = new("https+http://why-api"));
+// API base URL: Use service discovery URL or configurable fallback
+var apiBaseUrl = new Uri(
+    builder.Configuration["ApiBaseUrl"]
+    ?? Environment.GetEnvironmentVariable("WHY_API_BASE_URL")
+    ?? "http+https://why-api"
+);
 
-// Add the MCP services: the transport to use (http) and the tools to register.
+// Register WebApiClientCore with AOT JSON source generator context
 builder.Services
-    .AddMcpServer()
-    .WithHttpTransport()
-    .WithTools<WhyTools>() // Add WhyTools
-    ;
+    .AddWebApiClient()
+    .ConfigureHttpApi(options =>
+    {
+        options.PrependJsonSerializerContext(WhyJsonSerializerContext.Default);
+    });
+
+// Register WHY MCP server with all API clients and tools (HTTP transport with service discovery)
+builder.Services.AddWhyMcpServerHttp(apiBaseUrl);
 
 var app = builder.Build();
 

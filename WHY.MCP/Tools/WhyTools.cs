@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ModelContextProtocol.Server;
-using WHY.MCP.Local.Services;
+using WHY.MCP.Services;
 using WHY.Shared.Api;
 using WHY.Shared.Dtos.Answers;
 using WHY.Shared.Dtos.Comments;
@@ -9,16 +9,16 @@ using WHY.Shared.Dtos.Common;
 using WHY.Shared.Dtos.Questions;
 using WHY.Shared.Dtos.Users;
 
-namespace WHY.MCP.Local.Tools;
+namespace WHY.MCP.Tools;
 
 // ═══════════════════════════════════════════
-// Auth Tools
+// Auth API Tool - IWhyMcpAuthApi
 // ═══════════════════════════════════════════
 
-public class AuthTools(IWhyMcpAuthApi authApi, TokenService tokenService)
+public class AuthApiTool(IWhyMcpAuthApi api, TokenService tokenService)
 {
     [McpServerTool]
-    [Description("Register a new user account")]
+    [Description("Register a new user account and automatically login")]
     public async Task<string> RegisterUser(
         [Description("Username")] string username,
         [Description("Password")] string password,
@@ -34,8 +34,8 @@ public class AuthTools(IWhyMcpAuthApi authApi, TokenService tokenService)
                 Nickname = nickname,
                 Bio = bio
             };
-            var result = await authApi.RegisterAsync(request);
-            if (!string.IsNullOrEmpty(result?.Token))
+            var result = await api.RegisterAsync(request);
+            if (!string.IsNullOrEmpty(result.Token))
             {
                 tokenService.SaveToken(result.Token, username);
                 return $"User '{username}' registered and logged in successfully.";
@@ -49,7 +49,7 @@ public class AuthTools(IWhyMcpAuthApi authApi, TokenService tokenService)
     }
 
     [McpServerTool]
-    [Description("Login existing user and save token")]
+    [Description("Login with existing user credentials")]
     public async Task<string> LoginUser(
         [Description("Username")] string username,
         [Description("Password")] string password)
@@ -57,8 +57,8 @@ public class AuthTools(IWhyMcpAuthApi authApi, TokenService tokenService)
         try
         {
             var request = new LoginUserRequest { Username = username, Password = password };
-            var result = await authApi.LoginAsync(request);
-            if (!string.IsNullOrEmpty(result?.Token))
+            var result = await api.LoginAsync(request);
+            if (!string.IsNullOrEmpty(result.Token))
             {
                 tokenService.SaveToken(result.Token, username);
                 return $"User '{username}' logged in successfully.";
@@ -73,10 +73,10 @@ public class AuthTools(IWhyMcpAuthApi authApi, TokenService tokenService)
 }
 
 // ═══════════════════════════════════════════
-// Question Tools
+// Question API Tool - IWhyMcpQuestionApi
 // ═══════════════════════════════════════════
 
-public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenService)
+public class QuestionApiTool(IWhyMcpQuestionApi api, TokenService tokenService)
 {
     [McpServerTool]
     [Description("Get recommended questions ordered by trending score. Returns questions ranked by engagement signals (votes, follows, bookmarks, answers, comments, views, shares, bounty) with time decay.")]
@@ -86,7 +86,7 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
     {
         try
         {
-            var result = await questionApi.GetRecommendedQuestionsAsync(
+            var result = await api.GetRecommendedQuestionsAsync(
                 new PagedRequest { Page = page, PageSize = pageSize });
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.PagedResponseQuestionResponse);
         }
@@ -97,16 +97,16 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
     }
 
     [McpServerTool]
-    [Description("Get specific question details by ID")]
+    [Description("Get detailed information about a specific question by ID")]
     public async Task<string> GetQuestion(
-        [Description("Question ID")] string id)
+        [Description("Question ID (GUID format)")] string id)
     {
         if (!Guid.TryParse(id, out var guid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
 
         try
         {
-            var result = await questionApi.GetQuestionAsync(guid);
+            var result = await api.GetQuestionAsync(guid);
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.QuestionResponse);
         }
         catch (Exception ex)
@@ -116,15 +116,15 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
     }
 
     [McpServerTool]
-    [Description("Create a new question")]
+    [Description("Create a new question. Requires authentication.")]
     public async Task<string> CreateQuestion(
         [Description("Question title")] string title,
-        [Description("Question description")] string description,
+        [Description("Detailed question description")] string description,
         [Description("Comma separated Topic IDs (optional)")] string? topicIds = null,
         [Description("Post anonymously")] bool isAnonymous = false)
     {
         if (!tokenService.IsLoggedIn)
-            return "You must be logged in. Please use LoginUser tool first.";
+            return "You must be logged in. Please use the LoginUser tool first.";
 
         try
         {
@@ -144,12 +144,12 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
                 TopicIds = tIds,
                 IsAnonymous = isAnonymous
             };
-            var result = await questionApi.CreateQuestionAsync(request);
+            var result = await api.CreateQuestionAsync(request);
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.QuestionResponse);
         }
         catch (FormatException)
         {
-            return "Invalid topicIds format. Must be comma separated Guids.";
+            return "Invalid topicIds format. Must be comma separated GUIDs.";
         }
         catch (Exception ex)
         {
@@ -158,23 +158,23 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
     }
 
     [McpServerTool]
-    [Description("Vote on a question. Use 'Upvote' to upvote, 'Downvote' to downvote, or 'None' to remove vote.")]
+    [Description("Vote on a question. Requires authentication. Use 'Upvote' to upvote, 'Downvote' to downvote, or 'None' to remove your vote.")]
     public async Task<string> VoteQuestion(
-        [Description("Question ID")] string questionId,
+        [Description("Question ID (GUID format)")] string questionId,
         [Description("Vote type: 'Upvote', 'Downvote', or 'None'")] string voteType)
     {
         if (!tokenService.IsLoggedIn)
-            return "You must be logged in. Please use LoginUser tool first.";
+            return "You must be logged in. Please use the LoginUser tool first.";
 
         if (!Guid.TryParse(questionId, out var qGuid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
 
         if (!Enum.TryParse<VoteType>(voteType, true, out var type))
             return "Invalid vote type. Must be 'Upvote', 'Downvote', or 'None'.";
 
         try
         {
-            var result = await questionApi.VoteQuestionAsync(qGuid, new VoteQuestionRequest { VoteType = type });
+            var result = await api.VoteQuestionAsync(qGuid, new VoteQuestionRequest { VoteType = type });
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.QuestionResponse);
         }
         catch (Exception ex)
@@ -185,24 +185,24 @@ public class QuestionTools(IWhyMcpQuestionApi questionApi, TokenService tokenSer
 }
 
 // ═══════════════════════════════════════════
-// Answer Tools
+// Answer API Tool - IWhyMcpAnswerApi
 // ═══════════════════════════════════════════
 
-public class AnswerTools(IWhyMcpAnswerApi answerApi, TokenService tokenService)
+public class AnswerApiTool(IWhyMcpAnswerApi api, TokenService tokenService)
 {
     [McpServerTool]
-    [Description("Get answers for a specific question")]
+    [Description("Get all answers for a specific question with pagination")]
     public async Task<string> GetAnswers(
-        [Description("Question ID")] string questionId,
+        [Description("Question ID (GUID format)")] string questionId,
         [Description("Page number")] int page = 1,
         [Description("Page size")] int pageSize = 10)
     {
         if (!Guid.TryParse(questionId, out var guid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
 
         try
         {
-            var result = await answerApi.GetAnswersAsync(guid,
+            var result = await api.GetAnswersAsync(guid,
                 new PagedRequest { Page = page, PageSize = pageSize });
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.PagedResponseAnswerResponse);
         }
@@ -213,22 +213,22 @@ public class AnswerTools(IWhyMcpAnswerApi answerApi, TokenService tokenService)
     }
 
     [McpServerTool]
-    [Description("Create an answer for a question")]
+    [Description("Create an answer for a question. Requires authentication.")]
     public async Task<string> CreateAnswer(
-        [Description("Question ID")] string questionId,
+        [Description("Question ID (GUID format)")] string questionId,
         [Description("Answer content")] string content,
         [Description("Post anonymously")] bool isAnonymous = false)
     {
         if (!tokenService.IsLoggedIn)
-            return "You must be logged in. Please use LoginUser tool first.";
+            return "You must be logged in. Please use the LoginUser tool first.";
 
         if (!Guid.TryParse(questionId, out var guid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
 
         try
         {
             var request = new CreateAnswerRequest { Content = content, IsAnonymous = isAnonymous };
-            var result = await answerApi.CreateAnswerAsync(guid, request);
+            var result = await api.CreateAnswerAsync(guid, request);
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.AnswerResponse);
         }
         catch (Exception ex)
@@ -238,25 +238,25 @@ public class AnswerTools(IWhyMcpAnswerApi answerApi, TokenService tokenService)
     }
 
     [McpServerTool]
-    [Description("Vote on an answer. Use 'Upvote', 'Downvote', or 'None'.")]
+    [Description("Vote on an answer. Requires authentication. Use 'Upvote', 'Downvote', or 'None' to remove your vote.")]
     public async Task<string> VoteAnswer(
-        [Description("Question ID")] string questionId,
-        [Description("Answer ID")] string answerId,
+        [Description("Question ID (GUID format)")] string questionId,
+        [Description("Answer ID (GUID format)")] string answerId,
         [Description("Vote type: 'Upvote', 'Downvote', or 'None'")] string voteType)
     {
         if (!tokenService.IsLoggedIn)
-            return "You must be logged in. Please use LoginUser tool first.";
+            return "You must be logged in. Please use the LoginUser tool first.";
 
         if (!Guid.TryParse(questionId, out var qGuid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
         if (!Guid.TryParse(answerId, out var aGuid))
-            return "Invalid Answer ID format.";
+            return "Invalid Answer ID format. Must be a valid GUID.";
         if (!Enum.TryParse<VoteType>(voteType, true, out var type))
             return "Invalid vote type. Must be 'Upvote', 'Downvote', or 'None'.";
 
         try
         {
-            var result = await answerApi.VoteAnswerAsync(qGuid, aGuid,
+            var result = await api.VoteAnswerAsync(qGuid, aGuid,
                 new VoteAnswerRequest { VoteType = type });
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.AnswerResponse);
         }
@@ -268,27 +268,27 @@ public class AnswerTools(IWhyMcpAnswerApi answerApi, TokenService tokenService)
 }
 
 // ═══════════════════════════════════════════
-// Comment Tools
+// Comment API Tool - IWhyMcpCommentApi
 // ═══════════════════════════════════════════
 
-public class CommentTools(IWhyMcpCommentApi commentApi, TokenService tokenService)
+public class CommentApiTool(IWhyMcpCommentApi api, TokenService tokenService)
 {
     [McpServerTool]
-    [Description("Get comments for an answer")]
+    [Description("Get all comments for a specific answer with pagination")]
     public async Task<string> GetComments(
-        [Description("Question ID")] string questionId,
-        [Description("Answer ID")] string answerId,
+        [Description("Question ID (GUID format)")] string questionId,
+        [Description("Answer ID (GUID format)")] string answerId,
         [Description("Page number")] int page = 1,
         [Description("Page size")] int pageSize = 10)
     {
         if (!Guid.TryParse(questionId, out var qGuid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
         if (!Guid.TryParse(answerId, out var aGuid))
-            return "Invalid Answer ID format.";
+            return "Invalid Answer ID format. Must be a valid GUID.";
 
         try
         {
-            var result = await commentApi.GetCommentsAsync(qGuid, aGuid,
+            var result = await api.GetCommentsAsync(qGuid, aGuid,
                 new PagedRequest { Page = page, PageSize = pageSize });
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.PagedResponseCommentResponse);
         }
@@ -299,24 +299,24 @@ public class CommentTools(IWhyMcpCommentApi commentApi, TokenService tokenServic
     }
 
     [McpServerTool]
-    [Description("Create a comment on an answer")]
+    [Description("Create a comment on an answer. Requires authentication.")]
     public async Task<string> CreateComment(
-        [Description("Question ID")] string questionId,
-        [Description("Answer ID")] string answerId,
+        [Description("Question ID (GUID format)")] string questionId,
+        [Description("Answer ID (GUID format)")] string answerId,
         [Description("Comment content")] string content)
     {
         if (!tokenService.IsLoggedIn)
-            return "You must be logged in. Please use LoginUser tool first.";
+            return "You must be logged in. Please use the LoginUser tool first.";
 
         if (!Guid.TryParse(questionId, out var qGuid))
-            return "Invalid Question ID format.";
+            return "Invalid Question ID format. Must be a valid GUID.";
         if (!Guid.TryParse(answerId, out var aGuid))
-            return "Invalid Answer ID format.";
+            return "Invalid Answer ID format. Must be a valid GUID.";
 
         try
         {
             var request = new CreateCommentRequest { Content = content };
-            var result = await commentApi.CreateCommentAsync(qGuid, aGuid, request);
+            var result = await api.CreateCommentAsync(qGuid, aGuid, request);
             return JsonSerializer.Serialize(result, WhyJsonSerializerContext.Default.CommentResponse);
         }
         catch (Exception ex)

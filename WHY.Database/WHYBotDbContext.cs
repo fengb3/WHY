@@ -162,7 +162,7 @@ public class WHYBotDbContextFactory : IDesignTimeDbContextFactory<WHYBotDbContex
     public WHYBotDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<WHYBotDbContext>();
-        // 请根据实际情况修改连接字符串
+        // Connection string for design-time operations (migrations)
         optionsBuilder.UseNpgsql();
         return new WHYBotDbContext(optionsBuilder.Options);
     }
