@@ -1,14 +1,15 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using WHY.Database;
 using WHY.Database.Model;
 using WHY.Shared.Api;
+using WHY.Shared.Dtos;
 using WHY.Shared.Dtos.Auth;
 using WHY.Shared.Dtos.Users;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
-using System.Text;
 
 namespace WHY.Api.Controllers.MCP;
 
@@ -17,18 +18,26 @@ namespace WHY.Api.Controllers.MCP;
 /// </summary>
 [ApiController]
 [Route("api/Users")]
-public class AuthController(WHYBotDbContext context, IConfiguration configuration) : ControllerBase, IWhyMcpAuthApi
+public class AuthController(WHYBotDbContext context, IConfiguration configuration)
+    : ControllerBase, IWhyMcpAuthApi
 {
     /// <summary>
     /// Register a new LLM user
     /// </summary>
     [HttpPost("register")]
-    public async Task<AuthResponse> RegisterAsync([FromBody] RegisterUserRequest request)
+    public async Task<BaseResponse<AuthResponse>> RegisterAsync(
+        [FromBody] RegisterUserRequest request
+    )
     {
         // Check if username already exists
         if (await context.Users.AnyAsync(u => u.Username == request.Username))
         {
-            throw new InvalidOperationException("Username already exists");
+            // throw new InvalidOperationException("Username already exists");
+            return new BaseResponse<AuthResponse>
+            {
+                Message = "Username already exists",
+                StatusCode = StatusCodes.Status400BadRequest,
+            };
         }
 
         var user = new BotUser()
@@ -40,17 +49,23 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
             Bio = request.Bio,
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow,
-            IsActive = true
+            IsActive = true,
         };
 
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        var token = GenerateJwtToken(user);
+        var token = GenerateJwtToken(user, out long expiresInMilliseconds);
 
-        return new AuthResponse
+        return new BaseResponse<AuthResponse>
         {
-            Token = token
+            Data = new AuthResponse
+            {
+                Token = token,
+                ExpiresInMilliseconds = expiresInMilliseconds,
+            },
+            Message = "User registered successfully",
+            StatusCode = StatusCodes.Status201Created,
         };
     }
 
@@ -58,41 +73,60 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
     /// Login an existing LLM user
     /// </summary>
     [HttpPost("login")]
-    public async Task<AuthResponse> LoginAsync([FromBody] LoginUserRequest request)
+    public async Task<BaseResponse<AuthResponse>> LoginAsync([FromBody] LoginUserRequest request)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user == null || !user.IsActive)
         {
-            throw new UnauthorizedAccessException("Invalid username or password");
+            // throw new UnauthorizedAccessException("Invalid username or password");
+            return new BaseResponse<AuthResponse>
+            {
+                Message = "Invalid username or password",
+                StatusCode = StatusCodes.Status401Unauthorized,
+            };
         }
 
         var passwordHash = HashPassword(request.Password);
         if (!string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException("Invalid username or password");
+            // throw new UnauthorizedAccessException("Invalid username or password");
+            return new BaseResponse<AuthResponse>
+            {
+                Message = "Invalid username or password",
+                StatusCode = StatusCodes.Status401Unauthorized,
+            };
         }
 
         user.LastLoginAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
 
-        var token = GenerateJwtToken(user);
+        var token = GenerateJwtToken(user, out long expiresInMilliseconds);
 
-        return new AuthResponse
+        return new BaseResponse<AuthResponse>
         {
-            Token = token
+            Data = new AuthResponse
+            {
+                Token = token,
+                ExpiresInMilliseconds = expiresInMilliseconds,
+            },
+            Message = "Login successful",
+            StatusCode = StatusCodes.Status200OK,
         };
     }
 
-    private string HashPassword(string password)
+    private static string HashPassword(string password)
     {
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+        return Convert.ToHexStringLower(hashedBytes);
     }
 
-    private string GenerateJwtToken(BotUser user)
+    private string GenerateJwtToken(BotUser user, out long expiresInMilliseconds)
     {
-        var jwtKey = configuration["Jwt:Key"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
+        expiresInMilliseconds = 1000 * 60 * 60 * 24 * 30L; // 30 days in milliseconds
+
+        var jwtKey =
+            configuration["Jwt:Key"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
         var jwtIssuer = configuration["Jwt:Issuer"] ?? "WHY";
         var jwtAudience = configuration["Jwt:Audience"] ?? "WHY";
 
@@ -103,14 +137,14 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
         {
             new Claim("id", user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
         var token = new JwtSecurityToken(
             issuer: jwtIssuer,
             audience: jwtAudience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(30),
+            expires: DateTime.UtcNow.AddMilliseconds(expiresInMilliseconds),
             signingCredentials: credentials
         );
 

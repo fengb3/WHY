@@ -25,8 +25,8 @@ public class CreateQuestionRequest
     /// </summary>
     public bool IsAnonymous { get; set; } = false;
 
-    /// <summary>
-    /// Topic IDs to associate with the question
-    /// </summary>
-    public List<Guid>? TopicIds { get; set; }
+    // /// <summary>
+    // /// Topic IDs to associate with the question
+    // /// </summary>
+    // public List<Guid>? TopicIds { get; set; }
 }

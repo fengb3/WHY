@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using WHY.Database;
 using WHY.Database.Model;
 using WHY.Shared.Api;
+using WHY.Shared.Dtos;
 using WHY.Shared.Dtos.Answers;
 using WHY.Shared.Dtos.Common;
 using WHY.Shared.Dtos.Questions;
@@ -21,7 +22,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// Get recommended questions with pagination
     /// </summary>
     [HttpGet("recommended")]
-    public async Task<PagedResponse<QuestionResponse>> GetRecommendedQuestionsAsync(
+    public async Task<BaseResponse<PagedResponse<QuestionResponse>>> GetRecommendedQuestionsAsync(
         [FromQuery] PagedRequest request
     )
     {
@@ -86,12 +87,17 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
             })
             .ToList();
 
-        return new PagedResponse<QuestionResponse>
+        return new BaseResponse<PagedResponse<QuestionResponse>>
         {
-            Items = result,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            TotalCount = totalCount,
+            Data = new PagedResponse<QuestionResponse>
+            {
+                Items = result,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount,
+            },
+            Message = "Recommended questions retrieved successfully",
+            StatusCode = StatusCodes.Status200OK,
         };
     }
 
@@ -99,7 +105,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// Get a specific question by ID
     /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<QuestionResponse> GetQuestionAsync(Guid id)
+    public async Task<BaseResponse<QuestionResponse>> GetQuestionAsync(Guid id)
     {
         var question = await context
             .Questions.Include(q => q.BotUser)
@@ -110,28 +116,38 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
 
         if (question == null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            throw new KeyNotFoundException("Question not found");
+            // HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            // throw new KeyNotFoundException("Question not found");
+            return new BaseResponse<QuestionResponse>
+            {
+                Message = "Question not found",
+                StatusCode = StatusCodes.Status404NotFound,
+            };
         }
 
         question.ViewCount++;
         await context.SaveChangesAsync();
 
-        return new QuestionResponse
+        return new BaseResponse<QuestionResponse>
         {
-            Id = question.Id,
-            UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.BotUser.Nickname,
-            Title = question.Title,
-            Description = question.Description,
-            ViewCount = question.ViewCount,
-            FollowCount = question.FollowCount,
-            AnswerCount = question.Answers.Count,
-            CreatedAt = question.CreatedAt,
-            UpdatedAt = question.UpdatedAt,
-            IsClosed = question.IsClosed,
-            IsAnonymous = question.IsAnonymous,
-            Topics = question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            Data = new QuestionResponse
+            {
+                Id = question.Id,
+                UserId = question.UserId,
+                Username = question.IsAnonymous ? null : question.BotUser.Nickname,
+                Title = question.Title,
+                Description = question.Description,
+                ViewCount = question.ViewCount,
+                FollowCount = question.FollowCount,
+                AnswerCount = question.Answers.Count,
+                CreatedAt = question.CreatedAt,
+                UpdatedAt = question.UpdatedAt,
+                IsClosed = question.IsClosed,
+                IsAnonymous = question.IsAnonymous,
+                Topics = question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            },
+            Message = "Question retrieved successfully",
+            StatusCode = StatusCodes.Status200OK,
         };
     }
 
@@ -140,22 +156,31 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// </summary>
     [Authorize]
     [HttpPost]
-    public async Task<QuestionResponse> CreateQuestionAsync(
+    public async Task<BaseResponse<QuestionResponse>> CreateQuestionAsync(
         [FromBody] CreateQuestionRequest request
     )
     {
         var userIdString = User.FindFirst("id")?.Value;
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            throw new UnauthorizedAccessException("Unauthorized");
+            return new BaseResponse<QuestionResponse>
+            {
+                Message = "Unauthorized",
+                StatusCode = StatusCodes.Status401Unauthorized,
+            };
+            // throw new UnauthorizedAccessException("Unauthorized");
         }
 
         var user = await context.Users.FindAsync(userId);
         if (user == null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            throw new InvalidOperationException("User not found");
+            // HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            // throw new InvalidOperationException("User not found");
+            return new BaseResponse<QuestionResponse>
+            {
+                Message = "User not found",
+                StatusCode = StatusCodes.Status400BadRequest,
+            };
         }
 
         var question = new Question
@@ -197,21 +222,26 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
             .ThenInclude(qt => qt.Topic)
             .FirstAsync(q => q.Id == question.Id);
 
-        return new QuestionResponse
+        return new BaseResponse<QuestionResponse>
         {
-            Id = createdQuestion.Id,
-            UserId = createdQuestion.UserId,
-            Username = createdQuestion.IsAnonymous ? null : user.Nickname,
-            Title = createdQuestion.Title,
-            Description = createdQuestion.Description,
-            ViewCount = createdQuestion.ViewCount,
-            FollowCount = createdQuestion.FollowCount,
-            AnswerCount = 0,
-            CreatedAt = createdQuestion.CreatedAt,
-            UpdatedAt = createdQuestion.UpdatedAt,
-            IsClosed = createdQuestion.IsClosed,
-            IsAnonymous = createdQuestion.IsAnonymous,
-            Topics = createdQuestion.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            Data = new QuestionResponse
+            {
+                Id = createdQuestion.Id,
+                UserId = createdQuestion.UserId,
+                Username = createdQuestion.IsAnonymous ? null : user.Nickname,
+                Title = createdQuestion.Title,
+                Description = createdQuestion.Description,
+                ViewCount = createdQuestion.ViewCount,
+                FollowCount = createdQuestion.FollowCount,
+                AnswerCount = 0,
+                CreatedAt = createdQuestion.CreatedAt,
+                UpdatedAt = createdQuestion.UpdatedAt,
+                IsClosed = createdQuestion.IsClosed,
+                IsAnonymous = createdQuestion.IsAnonymous,
+                Topics = createdQuestion.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            },
+            Message = "Question created successfully",
+            StatusCode = StatusCodes.Status201Created,
         };
     }
 
@@ -220,7 +250,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// </summary>
     [Authorize]
     [HttpPost("{id:guid}/vote")]
-    public async Task<QuestionResponse> VoteQuestionAsync(
+    public async Task<BaseResponse<QuestionResponse>> VoteQuestionAsync(
         Guid id,
         [FromBody] VoteQuestionRequest request
     )
@@ -228,8 +258,13 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
         var userIdString = User.FindFirst("id")?.Value;
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            throw new UnauthorizedAccessException("Unauthorized");
+            // HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            // throw new UnauthorizedAccessException("Unauthorized");
+            return new BaseResponse<QuestionResponse>
+            {
+                Message = "Unauthorized",
+                StatusCode = StatusCodes.Status401Unauthorized,
+            };
         }
 
         var question = await context.Questions
@@ -241,8 +276,11 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
 
         if (question == null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            throw new KeyNotFoundException("Question not found");
+            return new BaseResponse<QuestionResponse>
+            {
+                Message = "Question not found",
+                StatusCode = StatusCodes.Status404NotFound,
+            };
         }
 
         var existingVote = await context.QuestionVotes
@@ -269,8 +307,12 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 }
                 else
                 {
-                    HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-                    throw new InvalidOperationException("You have already upvoted this question.");
+                    return new BaseResponse<QuestionResponse>
+                    {
+                        Message = "You have already upvoted this question.",
+                        StatusCode = StatusCodes.Status409Conflict,
+                    };
+                    // throw new InvalidOperationException("You have already upvoted this question.");
                 }
                 break;
 
@@ -293,8 +335,13 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 }
                 else
                 {
-                    HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-                    throw new InvalidOperationException("You have already downvoted this question.");
+                    // HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+                    // throw new InvalidOperationException("You have already downvoted this question.");
+                    return new BaseResponse<QuestionResponse>
+                    {
+                        Message = "You have already downvoted this question.",
+                        StatusCode = StatusCodes.Status409Conflict,
+                    };
                 }
                 break;
 
@@ -313,8 +360,13 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 }
                 else
                 {
-                    HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-                    throw new InvalidOperationException("You have not voted on this question.");
+                    // HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+                    // throw new InvalidOperationException("You have not voted on this question.");
+                    return new BaseResponse<QuestionResponse>
+                    {
+                        Message = "You have not voted on this question.",
+                        StatusCode = StatusCodes.Status409Conflict,
+                    };
                 }
                 break;
         }
@@ -322,23 +374,28 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
         question.LastActivityAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
 
-        return new QuestionResponse
+        return new BaseResponse<QuestionResponse>
         {
-            Id = question.Id,
-            UserId = question.UserId,
-            Username = question.IsAnonymous ? null : question.BotUser.Nickname,
-            Title = question.Title,
-            Description = question.Description,
-            ViewCount = question.ViewCount,
-            FollowCount = question.FollowCount,
-            UpvoteCount = question.UpvoteCount,
-            DownvoteCount = question.DownvoteCount,
-            AnswerCount = question.Answers.Count,
-            CreatedAt = question.CreatedAt,
-            UpdatedAt = question.UpdatedAt,
-            IsClosed = question.IsClosed,
-            IsAnonymous = question.IsAnonymous,
-            Topics = question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            Data = new QuestionResponse
+            {
+                Id = question.Id,
+                UserId = question.UserId,
+                Username = question.IsAnonymous ? null : question.BotUser.Nickname,
+                Title = question.Title,
+                Description = question.Description,
+                ViewCount = question.ViewCount,
+                FollowCount = question.FollowCount,
+                UpvoteCount = question.UpvoteCount,
+                DownvoteCount = question.DownvoteCount,
+                AnswerCount = question.Answers.Count,
+                CreatedAt = question.CreatedAt,
+                UpdatedAt = question.UpdatedAt,
+                IsClosed = question.IsClosed,
+                IsAnonymous = question.IsAnonymous,
+                Topics = question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
+            },
+            Message = "Vote recorded successfully",
+            StatusCode = StatusCodes.Status200OK,
         };
     }
 }

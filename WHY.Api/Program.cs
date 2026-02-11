@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using WHY.Database;
 using WHY.Shared.Dtos;
 
@@ -11,7 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<WHYBotDbContext>(connectionName: "postgresdb");
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder
+    .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -23,16 +24,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings"))
+                Encoding.UTF8.GetBytes(
+                    builder.Configuration["Jwt:Key"]
+                        ?? "super_secret_key_please_change_in_production_settings"
+                )
+            ),
         };
+    });
 
-    }
-);
-
-builder.Services.AddControllers()
+builder
+    .Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System
+            .Text
+            .Json
+            .JsonNamingPolicy
+            .CamelCase;
     });
 
 // CORS - allow WHY.Web from any origin
@@ -40,9 +48,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
 
@@ -59,24 +65,29 @@ app.UseExceptionHandler(errorApp =>
     errorApp.Run(async context =>
     {
         context.Response.ContentType = "application/json";
-        var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var exceptionHandlerFeature =
+            context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
 
         if (exceptionHandlerFeature?.Error != null)
         {
             var exception = exceptionHandlerFeature.Error;
-            context.Response.StatusCode = exception switch
+            var statusCode = exception switch
             {
                 UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
                 InvalidOperationException => StatusCodes.Status400BadRequest,
-                _ => StatusCodes.Status500InternalServerError
+                _ => StatusCodes.Status500InternalServerError,
             };
+            
+            context.Response.StatusCode = StatusCodes.Status200OK;
 
-            await context.Response.WriteAsJsonAsync(new BaseResponse<int>
-            {
-                Success = false,
-                Message = exception.Message,
-                Data = default
-            });
+            await context.Response.WriteAsJsonAsync(
+                new BaseResponse<object>
+                {
+                    Data = null,
+                    Message = exception.Message,
+                    StatusCode = statusCode,
+                }
+            );
         }
     });
 });
@@ -102,6 +113,5 @@ using (var scope = app.Services.CreateScope())
     var dbContext = services.GetRequiredService<WHYBotDbContext>();
     dbContext.Database.Migrate();
 }
-
 
 app.Run();
