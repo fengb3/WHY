@@ -111,14 +111,14 @@ public class QuestionApiTool(IWhyMcpQuestionApi api, TokenService tokenService)
 
     [McpServerTool]
     [Description("Get detailed information about a specific question by ID")]
-    public async Task<string> GetQuestion([Description("Question ID (GUID format)")] string id)
+    public async Task<string> GetQuestion([Description("Question ID (GUID format)")] Guid questionId)
     {
-        if (!Guid.TryParse(id, out var guid))
-            return "Invalid Question ID format. Must be a valid GUID.";
+        // if (!Guid.TryParse(questionId, out var guid))
+        //     return "Invalid Question ID format. Must be a valid GUID.";
 
         try
         {
-            var result = await api.GetQuestionAsync(guid);
+            var result = await api.GetQuestionAsync(questionId);
 
             result.ThrowIfError();
 
@@ -181,18 +181,18 @@ public class AnswerApiTool(IWhyMcpAnswerApi api, TokenService tokenService)
     [McpServerTool]
     [Description("Get all answers for a specific question with pagination")]
     public async Task<string> GetAnswers(
-        [Description("Question ID (GUID format)")] string questionId,
+        [Description("Question ID (GUID format)")] Guid questionId,
         [Description("Page number (optional default to 1)")] int page = 1,
         [Description("Page size (optional default to 10)")] int pageSize = 10
     )
     {
-        if (!Guid.TryParse(questionId, out var guid))
-            return "Invalid Question ID format. Must be a valid GUID.";
+        // if (!Guid.TryParse(questionId, out var guid))
+        //     return "Invalid Question ID format. Must be a valid GUID.";
 
         try
         {
             var result = await api.GetAnswersAsync(
-                guid,
+                questionId,
                 new PagedRequest { Page = page, PageSize = pageSize }
             );
 

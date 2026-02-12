@@ -10,45 +10,33 @@ using WHY.Shared.Dtos.Users;
 
 namespace WHY.Shared.Api;
 
-/// <summary>
-/// Composite API interface
-/// </summary>
-public interface IWhyMcpApi
-    : IWhyMcpAuthApi,
-        IWhyMcpQuestionApi,
-        IWhyMcpAnswerApi,
-        IWhyMcpCommentApi
-{
-}
 
 /// <summary>
 /// Auth API (maps to UsersController register/login)
 /// </summary>
-[HttpHost(("api/auth"))]
 public interface IWhyMcpAuthApi
 {
-    [HttpPost("/register")]
+    [HttpPost("api/auth/register")]
     Task<BaseResponse<AuthResponse>> RegisterAsync([JsonContent] RegisterUserRequest request);
 
-    [HttpPost("/login")]
+    [HttpPost("api/auth/login")]
     Task<BaseResponse<AuthResponse>> LoginAsync([JsonContent] LoginUserRequest request);
 }
 
 /// <summary>
 /// Question API (maps to QuestionsController)
 /// </summary>
-[HttpHost(("api/question"))]
 public interface IWhyMcpQuestionApi
 {
-    [HttpPost("/recommended")]
+    [HttpPost("api/question/recommended")]
     Task<BaseResponse<PagedResponse<QuestionResponse>>> GetRecommendedQuestionsAsync(
         [JsonContent] PagedRequest request
     );
 
-    [HttpPost("/get-by-id")]
+    [HttpPost("api/question/get-by-id")]
     Task<BaseResponse<QuestionResponse>> GetQuestionAsync([PathQuery] Guid id);
 
-    [HttpPost("/create")]
+    [HttpPost("api/question/create")]
     Task<BaseResponse<QuestionResponse>> CreateQuestionAsync(
         [JsonContent] CreateQuestionRequest request
     );
@@ -57,22 +45,21 @@ public interface IWhyMcpQuestionApi
 /// <summary>
 /// Answer API (maps to AnswersController)
 /// </summary>
-[HttpHost("api/answer")]
 public interface IWhyMcpAnswerApi
 {
-    [HttpPost("/get-by-question-id")]
+    [HttpPost("api/answer/get-by-question-id")]
     Task<BaseResponse<PagedResponse<AnswerResponse>>> GetAnswersAsync(
         [PathQuery] Guid questionId,
         [JsonContent] PagedRequest request
     );
 
-    [HttpPost("/create")]
+    [HttpPost("api/answer/create")]
     Task<BaseResponse<AnswerResponse>> CreateAnswerAsync(
         [PathQuery] Guid questionId,
         [JsonContent] CreateAnswerRequest request
     );
 
-    [HttpPost("/vote")]
+    [HttpPost("api/answer/vote")]
     Task<BaseResponse<AnswerResponse>> VoteAnswerAsync(
         [PathQuery] Guid answerId,
         [JsonContent] VoteAnswerRequest request
@@ -82,16 +69,15 @@ public interface IWhyMcpAnswerApi
 /// <summary>
 /// Comment API (maps to AnswersController comment endpoints)
 /// </summary>
-[HttpHost("api/comment")]
 public interface IWhyMcpCommentApi
 {
-    [HttpPost("/get-under-answer")]
+    [HttpPost("api/comment/get-under-answer")]
     Task<BaseResponse<PagedResponse<CommentResponse>>> GetCommentsAsync(
         [PathQuery] Guid answerId,
         [JsonContent] PagedRequest request
     );
 
-    [HttpPost("/create")]
+    [HttpPost("api/comment/create")]
     Task<BaseResponse<CommentResponse>> CreateCommentAsync(
         [PathQuery] Guid answerId,
         [JsonContent] CreateCommentRequest request

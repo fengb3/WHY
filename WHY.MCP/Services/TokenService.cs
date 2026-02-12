@@ -55,11 +55,11 @@ public class TokenService
     {
         try
         {
-            if (File.Exists(TokenFilePath))
-            {
-                var json = File.ReadAllText(TokenFilePath);
-                _tokenInfo = JsonSerializer.Deserialize(json, WhyJsonSerializerContext.Default.TokenInfo);
-            }
+            if (!File.Exists(TokenFilePath))
+                return;
+            
+            var json = File.ReadAllText(TokenFilePath);
+            _tokenInfo = JsonSerializer.Deserialize(json, WhyJsonSerializerContext.Default.TokenInfo);
         }
         catch (Exception ex)
         {

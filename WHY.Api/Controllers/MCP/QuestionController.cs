@@ -15,13 +15,13 @@ namespace WHY.Api.Controllers.MCP;
 /// MCP Question Controller - Implements IWhyMcpQuestionApi
 /// </summary>
 [ApiController]
-[Route("api/Questions")]
+[Route("api/question")]
 public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyMcpQuestionApi
 {
     /// <summary>
     /// Get recommended questions with pagination
     /// </summary>
-    [HttpGet("recommended")]
+    [HttpPost("recommended")]
     public async Task<BaseResponse<PagedResponse<QuestionResponse>>> GetRecommendedQuestionsAsync(
         [FromQuery] PagedRequest request
     )
@@ -104,8 +104,8 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// <summary>
     /// Get a specific question by ID
     /// </summary>
-    [HttpGet("{id:guid}")]
-    public async Task<BaseResponse<QuestionResponse>> GetQuestionAsync(Guid id)
+    [HttpPost("get-by-id")]
+    public async Task<BaseResponse<QuestionResponse>> GetQuestionAsync([FromQuery]Guid id)
     {
         var question = await context
             .Questions.Include(q => q.BotUser)
@@ -155,7 +155,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// Create a new question
     /// </summary>
     [Authorize]
-    [HttpPost]
+    [HttpPost("create")]
     public async Task<BaseResponse<QuestionResponse>> CreateQuestionAsync(
         [FromBody] CreateQuestionRequest request
     )
@@ -199,20 +199,20 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
 
         context.Questions.Add(question);
 
-        // Add topics if provided
-        if (request.TopicIds != null && request.TopicIds.Any())
-        {
-            foreach (var topicId in request.TopicIds)
-            {
-                var topic = await context.Topics.FindAsync(topicId);
-                if (topic != null)
-                {
-                    context.QuestionTopics.Add(
-                        new QuestionTopic { QuestionId = question.Id, TopicId = topic.Id, }
-                    );
-                }
-            }
-        }
+        // // Add topics if provided
+        // if (request.TopicIds != null && request.TopicIds.Any())
+        // {
+        //     foreach (var topicId in request.TopicIds)
+        //     {
+        //         var topic = await context.Topics.FindAsync(topicId);
+        //         if (topic != null)
+        //         {
+        //             context.QuestionTopics.Add(
+        //                 new QuestionTopic { QuestionId = question.Id, TopicId = topic.Id, }
+        //             );
+        //         }
+        //     }
+        // }
 
         await context.SaveChangesAsync();
 
@@ -242,160 +242,6 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
             },
             Message = "Question created successfully",
             StatusCode = StatusCodes.Status201Created,
-        };
-    }
-
-    /// <summary>
-    /// Vote on a question (upvote, downvote, or remove vote)
-    /// </summary>
-    [Authorize]
-    [HttpPost("{id:guid}/vote")]
-    public async Task<BaseResponse<QuestionResponse>> VoteQuestionAsync(
-        Guid id,
-        [FromBody] VoteQuestionRequest request
-    )
-    {
-        var userIdString = User.FindFirst("id")?.Value;
-        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
-        {
-            // HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            // throw new UnauthorizedAccessException("Unauthorized");
-            return new BaseResponse<QuestionResponse>
-            {
-                Message = "Unauthorized",
-                StatusCode = StatusCodes.Status401Unauthorized,
-            };
-        }
-
-        var question = await context.Questions
-            .Include(q => q.BotUser)
-            .Include(q => q.QuestionTopics)
-                .ThenInclude(qt => qt.Topic)
-            .Include(q => q.Answers)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
-        if (question == null)
-        {
-            return new BaseResponse<QuestionResponse>
-            {
-                Message = "Question not found",
-                StatusCode = StatusCodes.Status404NotFound,
-            };
-        }
-
-        var existingVote = await context.QuestionVotes
-            .FirstOrDefaultAsync(qv => qv.QuestionId == id && qv.UserId == userId);
-
-        switch (request.VoteType)
-        {
-            case VoteType.Upvote:
-                if (existingVote == null)
-                {
-                    context.QuestionVotes.Add(new QuestionVote
-                    {
-                        QuestionId = id,
-                        UserId = userId,
-                        IsUpvote = true
-                    });
-                    question.UpvoteCount++;
-                }
-                else if (!existingVote.IsUpvote)
-                {
-                    existingVote.IsUpvote = true;
-                    question.DownvoteCount--;
-                    question.UpvoteCount++;
-                }
-                else
-                {
-                    return new BaseResponse<QuestionResponse>
-                    {
-                        Message = "You have already upvoted this question.",
-                        StatusCode = StatusCodes.Status409Conflict,
-                    };
-                    // throw new InvalidOperationException("You have already upvoted this question.");
-                }
-                break;
-
-            case VoteType.Downvote:
-                if (existingVote == null)
-                {
-                    context.QuestionVotes.Add(new QuestionVote
-                    {
-                        QuestionId = id,
-                        UserId = userId,
-                        IsUpvote = false
-                    });
-                    question.DownvoteCount++;
-                }
-                else if (existingVote.IsUpvote)
-                {
-                    existingVote.IsUpvote = false;
-                    question.UpvoteCount--;
-                    question.DownvoteCount++;
-                }
-                else
-                {
-                    // HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-                    // throw new InvalidOperationException("You have already downvoted this question.");
-                    return new BaseResponse<QuestionResponse>
-                    {
-                        Message = "You have already downvoted this question.",
-                        StatusCode = StatusCodes.Status409Conflict,
-                    };
-                }
-                break;
-
-            case VoteType.None:
-                if (existingVote != null)
-                {
-                    if (existingVote.IsUpvote)
-                    {
-                        question.UpvoteCount--;
-                    }
-                    else
-                    {
-                        question.DownvoteCount--;
-                    }
-                    context.QuestionVotes.Remove(existingVote);
-                }
-                else
-                {
-                    // HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-                    // throw new InvalidOperationException("You have not voted on this question.");
-                    return new BaseResponse<QuestionResponse>
-                    {
-                        Message = "You have not voted on this question.",
-                        StatusCode = StatusCodes.Status409Conflict,
-                    };
-                }
-                break;
-        }
-
-        question.LastActivityAt = DateTime.UtcNow;
-        await context.SaveChangesAsync();
-
-        return new BaseResponse<QuestionResponse>
-        {
-            Data = new QuestionResponse
-            {
-                Id = question.Id,
-                UserId = question.UserId,
-                Username = question.IsAnonymous ? null : question.BotUser.Nickname,
-                Title = question.Title,
-                Description = question.Description,
-                ViewCount = question.ViewCount,
-                FollowCount = question.FollowCount,
-                UpvoteCount = question.UpvoteCount,
-                DownvoteCount = question.DownvoteCount,
-                AnswerCount = question.Answers.Count,
-                CreatedAt = question.CreatedAt,
-                UpdatedAt = question.UpdatedAt,
-                IsClosed = question.IsClosed,
-                IsAnonymous = question.IsAnonymous,
-                Topics = question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
-            },
-            Message = "Vote recorded successfully",
-            StatusCode = StatusCodes.Status200OK,
         };
     }
 }

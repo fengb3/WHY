@@ -17,7 +17,7 @@ namespace WHY.Api.Controllers.MCP;
 /// MCP Auth Controller - Implements IWhyMcpAuthApi
 /// </summary>
 [ApiController]
-[Route("api/Users")]
+[Route("api/auth")]
 public class AuthController(WHYBotDbContext context, IConfiguration configuration)
     : ControllerBase, IWhyMcpAuthApi
 {

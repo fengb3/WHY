@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using WebApiClientCore;
 using WHY.MCP.Services;
 using WHY.MCP.Tools;
 using WHY.Shared.Api;
@@ -7,51 +8,19 @@ namespace WHY.MCP.Extensions;
 
 public static class McpServiceExtensions
 {
-    /// <summary>
-    /// Add WHY MCP server with all API clients and tools (Stdio transport)
-    /// </summary>
-    /// <param name="services">Service collection</param>
-    /// <param name="apiBaseUrl">Base URL for WHY API</param>
-    /// <returns>Service collection for chaining</returns>
-    public static IServiceCollection AddWhyMcpServer(this IServiceCollection services, Uri apiBaseUrl)
-    {
-        services.AddWhyMcpApiClients(apiBaseUrl);
 
-        // Add MCP server with tool classes - one tool class per API interface
-        services
-            .AddMcpServer()
-            .WithStdioServerTransport()
+    /// <summary>
+    /// Add why tools to a mcp server
+    /// </summary>
+    /// <param name="builder"></param>
+    /// <returns></returns>
+    public static IMcpServerBuilder WithWhyTools(this IMcpServerBuilder builder)
+        => builder
             .WithTools<AuthApiTool>()
             .WithTools<QuestionApiTool>()
             .WithTools<AnswerApiTool>()
             .WithTools<CommentApiTool>();
 
-        return services;
-    }
-
-    /// <summary>
-    /// Add WHY MCP server with HTTP transport, API clients, and service discovery support
-    /// </summary>
-    /// <param name="services">Service collection</param>
-    /// <param name="apiBaseUrl">Base URL for WHY API (supports https+http:// service discovery URIs)</param>
-    /// <returns>Service collection for chaining</returns>
-    public static IServiceCollection AddWhyMcpServerHttp(this IServiceCollection services, Uri apiBaseUrl)
-    {
-
-        services.AddWhyMcpApiClients(apiBaseUrl);
-
-
-        // Add MCP server with HTTP transport and tool classes
-        services
-            .AddMcpServer()
-            .WithHttpTransport()
-            .WithTools<AuthApiTool>()
-            .WithTools<QuestionApiTool>()
-            .WithTools<AnswerApiTool>()
-            .WithTools<CommentApiTool>();
-
-        return services;
-    }
 
     /// <summary>
     /// Register WHY API clients and dependencies (without MCP server)
@@ -59,25 +28,44 @@ public static class McpServiceExtensions
     /// <param name="services">Service collection</param>
     /// <param name="apiBaseUrl">Base URL for WHY API</param>
     /// <returns>Service collection for chaining</returns>
-    public static IServiceCollection AddWhyMcpApiClients(this IServiceCollection services, Uri apiBaseUrl)
+    public static IServiceCollection AddWhyMcpApiClients(this IServiceCollection services, Uri? apiBaseUrl = null)
     {
+        apiBaseUrl ??= new Uri(
+            Environment.GetEnvironmentVariable("WHY_API_HTTP") ??
+            Environment.GetEnvironmentVariable("WHY_API_HTTPS") ??
+            "http+https://why-api"
+        );
+
+        // Register WebApiClientCore with AOT JSON source generator context
+        services
+            .AddWebApiClient()
+            .ConfigureHttpApi(options => {
+                options.PrependJsonSerializerContext(WhyJsonSerializerContext.Default);
+            });
+
         // Register TokenService
         services.AddSingleton<TokenService>();
-        services.AddSingleton<TokenDelegatingHandler>();
+        services.AddTransient<TokenDelegatingHandler>();
 
         // Register all WebApiClientCore API interfaces
-        services.AddHttpApi<IWhyMcpAuthApi>(o => o.HttpHost = apiBaseUrl)
+        services.AddHttpApi<IWhyMcpAuthApi>(ConfigureHttpOptions)
             ;
 
-        services.AddHttpApi<IWhyMcpQuestionApi>(o => o.HttpHost = apiBaseUrl)
+        services.AddHttpApi<IWhyMcpQuestionApi>(ConfigureHttpOptions)
             .AddHttpMessageHandler<TokenDelegatingHandler>();
 
-        services.AddHttpApi<IWhyMcpAnswerApi>(o => o.HttpHost = apiBaseUrl)
+        services.AddHttpApi<IWhyMcpAnswerApi>(ConfigureHttpOptions)
             .AddHttpMessageHandler<TokenDelegatingHandler>();
 
-        services.AddHttpApi<IWhyMcpCommentApi>(o => o.HttpHost = apiBaseUrl)
+        services.AddHttpApi<IWhyMcpCommentApi>(ConfigureHttpOptions)
             .AddHttpMessageHandler<TokenDelegatingHandler>();
 
         return services;
+
+        void ConfigureHttpOptions(HttpApiOptions options)
+        {
+            options.HttpHost   = apiBaseUrl;
+            options.UseLogging = true;
+        }
     }
 }
