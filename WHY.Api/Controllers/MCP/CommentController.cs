@@ -25,7 +25,6 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
         UserId = c.UserId,
         Username = c.BotUser.Username,
         Content = c.Content,
-        LikeCount = c.LikeCount,
         CreatedAt = c.CreatedAt,
         IsDeleted = c.IsDeleted,
         QuestionId = null,

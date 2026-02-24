@@ -67,22 +67,14 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 Username = x.Question.IsAnonymous ? null : x.Question.BotUser.Nickname,
                 Title = x.Question.Title,
                 Description = x.Question.Description,
-                ViewCount = x.Question.ViewCount,
-                FollowCount = x.Question.FollowCount,
                 UpvoteCount = x.Question.UpvoteCount,
                 DownvoteCount = x.Question.DownvoteCount,
-                BookmarkCount = x.Question.BookmarkCount,
-                ShareCount = x.Question.ShareCount,
-                CommentCount = x.Question.CommentCount,
                 AnswerCount = x.AnswerCount,
                 HasAcceptedAnswer = x.Question.HasAcceptedAnswer,
-                BountyAmount = x.Question.BountyAmount,
                 CreatedAt = x.Question.CreatedAt,
                 UpdatedAt = x.Question.UpdatedAt,
-                LastActivityAt = x.Question.LastActivityAt,
                 IsClosed = x.Question.IsClosed,
                 IsAnonymous = x.Question.IsAnonymous,
-                RecommendationScore = Math.Round(x.Score, 4),
                 Topics = x.Question.QuestionTopics.Select(qt => qt.Topic.Name).ToList(),
             })
             .ToList();
@@ -137,8 +129,8 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 Username = question.IsAnonymous ? null : question.BotUser.Nickname,
                 Title = question.Title,
                 Description = question.Description,
-                ViewCount = question.ViewCount,
-                FollowCount = question.FollowCount,
+                UpvoteCount = question.UpvoteCount,
+                DownvoteCount = question.DownvoteCount,
                 AnswerCount = question.Answers.Count,
                 CreatedAt = question.CreatedAt,
                 UpdatedAt = question.UpdatedAt,
@@ -198,22 +190,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
         };
 
         context.Questions.Add(question);
-
-        // // Add topics if provided
-        // if (request.TopicIds != null && request.TopicIds.Any())
-        // {
-        //     foreach (var topicId in request.TopicIds)
-        //     {
-        //         var topic = await context.Topics.FindAsync(topicId);
-        //         if (topic != null)
-        //         {
-        //             context.QuestionTopics.Add(
-        //                 new QuestionTopic { QuestionId = question.Id, TopicId = topic.Id, }
-        //             );
-        //         }
-        //     }
-        // }
-
+        
         await context.SaveChangesAsync();
 
         // Reload question with topics
@@ -231,8 +208,8 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
                 Username = createdQuestion.IsAnonymous ? null : user.Nickname,
                 Title = createdQuestion.Title,
                 Description = createdQuestion.Description,
-                ViewCount = createdQuestion.ViewCount,
-                FollowCount = createdQuestion.FollowCount,
+                UpvoteCount = createdQuestion.UpvoteCount,
+                DownvoteCount = createdQuestion.DownvoteCount,
                 AnswerCount = 0,
                 CreatedAt = createdQuestion.CreatedAt,
                 UpdatedAt = createdQuestion.UpdatedAt,

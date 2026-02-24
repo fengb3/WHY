@@ -15,6 +15,7 @@ builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.IncludeErrorDetails = true; // Use only for debugging
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -29,6 +30,27 @@ builder
                         ?? "super_secret_key_please_change_in_production_settings"
                 )
             ),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogError("Authentication failed: {Message}", context.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogInformation("Token validated: {Context}", context.SecurityToken);
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                 logger.LogInformation("Token received: {Token}", context.Token);
+                 return Task.CompletedTask;
+            }
         };
     });
 
