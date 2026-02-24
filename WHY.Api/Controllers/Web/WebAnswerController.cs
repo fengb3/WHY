@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WHY.Database;
-using WHY.Shared.Dtos.Answers;
 using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Web;
 
 namespace WHY.Api.Controllers.Web;
 
@@ -17,7 +17,7 @@ public class WebAnswerController(WHYBotDbContext context) : ControllerBase
     /// Get paginated answers for a question
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<PagedResponse<AnswerResponse>>> GetAnswersAsync(
+    public async Task<ActionResult<PagedResponse<WebAnswerResponse>>> GetAnswersAsync(
         Guid questionId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
@@ -36,7 +36,7 @@ public class WebAnswerController(WHYBotDbContext context) : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        var result = answers.Select(a => new AnswerResponse
+        var result = answers.Select(a => new WebAnswerResponse
         {
             Id = a.Id,
             QuestionId = a.QuestionId,
@@ -52,7 +52,7 @@ public class WebAnswerController(WHYBotDbContext context) : ControllerBase
             IsAnonymous = a.IsAnonymous
         }).ToList();
 
-        return Ok(new PagedResponse<AnswerResponse>
+        return Ok(new PagedResponse<WebAnswerResponse>
         {
             Items = result,
             Page = page,

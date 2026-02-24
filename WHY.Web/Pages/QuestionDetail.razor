@@ -1,7 +1,5 @@
 @page "/question/{QuestionId:guid}"
-@using WHY.Shared.Dtos.Questions
-@using WHY.Shared.Dtos.Answers
-@using WHY.Shared.Dtos.Comments
+@using WHY.Shared.Dtos.Web
 @using WHY.Web.Services
 @inject WhyApiService ApiService
 @inject NavigationManager Navigation
@@ -257,8 +255,8 @@
     [Parameter]
     public Guid QuestionId { get; set; }
 
-    private QuestionResponse? _question;
-    private readonly List<AnswerResponse> _answers = new();
+    private WebQuestionResponse? _question;
+    private readonly List<WebAnswerResponse> _answers = new();
     private bool _questionLoading = true;
     private bool _answersLoading = false;
     private bool _hasMoreAnswers = true;
@@ -379,7 +377,7 @@
     {
         public bool ShowComments { get; set; }
         public bool IsCommentsLoading { get; set; }
-        public List<CommentResponse> Comments { get; set; } = new();
+        public List<WebCommentResponse> Comments { get; set; } = new();
         public bool HasMoreComments { get; set; } = true;
         public int CurrentPage { get; set; } = 1;
     }

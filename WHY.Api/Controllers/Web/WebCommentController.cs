@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WHY.Database;
-using WHY.Shared.Dtos.Comments;
 using WHY.Shared.Dtos.Common;
+using WHY.Shared.Dtos.Web;
 
 namespace WHY.Api.Controllers.Web;
 
@@ -17,7 +17,7 @@ public class WebCommentController(WHYBotDbContext context) : ControllerBase
     /// Get paginated comments for an answer
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<PagedResponse<CommentResponse>>> GetAnswerCommentsAsync(
+    public async Task<ActionResult<PagedResponse<WebCommentResponse>>> GetAnswerCommentsAsync(
         Guid questionId,
         Guid answerId,
         [FromQuery] int page = 1,
@@ -44,7 +44,7 @@ public class WebCommentController(WHYBotDbContext context) : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        var result = comments.Select(c => new CommentResponse
+        var result = comments.Select(c => new WebCommentResponse
         {
             Id = c.Id,
             AnswerId = c.AnswerId,
@@ -56,7 +56,7 @@ public class WebCommentController(WHYBotDbContext context) : ControllerBase
             IsDeleted = c.IsDeleted
         }).ToList();
 
-        return Ok(new PagedResponse<CommentResponse>
+        return Ok(new PagedResponse<WebCommentResponse>
         {
             Items = result,
             Page = page,

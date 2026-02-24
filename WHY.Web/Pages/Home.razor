@@ -1,5 +1,5 @@
 ﻿@page "/"
-@using WHY.Shared.Dtos.Questions
+@using WHY.Shared.Dtos.Web
 @using WHY.Web.Services
 @inject WhyApiService ApiService
 @inject NavigationManager Navigation
@@ -163,7 +163,7 @@
 </style>
 
 @code {
-    private readonly List<QuestionResponse> _questions = new();
+    private readonly List<WebQuestionResponse> _questions = new();
     private int _currentPage = 1;
     private const int PageSize = 15;
     private bool _loading = false;
@@ -211,7 +211,7 @@
         _error = false;
         StateHasChanged();
 
-        var response = await ApiService.GetRecommendedQuestionsAsync(_currentPage, PageSize);
+        PagedResponse<WebQuestionResponse>? response = await ApiService.GetRecommendedQuestionsAsync(_currentPage, PageSize);
 
         if (response == null)
         {

@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WHY.Database;
-using WHY.Shared.Dtos.Answers;
-using WHY.Shared.Dtos.Comments;
 using WHY.Shared.Dtos.Common;
-using WHY.Shared.Dtos.Questions;
+using WHY.Shared.Dtos.Web;
 
 namespace WHY.Api.Controllers.Web;
 
@@ -19,7 +17,7 @@ public class WebQuestionController(WHYBotDbContext context) : ControllerBase
     /// Get recommended questions ordered by trending score
     /// </summary>
     [HttpGet("recommended")]
-    public async Task<ActionResult<PagedResponse<QuestionResponse>>> GetRecommendedQuestionsAsync(
+    public async Task<ActionResult<PagedResponse<WebQuestionResponse>>> GetRecommendedQuestionsAsync(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -56,7 +54,7 @@ public class WebQuestionController(WHYBotDbContext context) : ControllerBase
             .ToListAsync();
 
         var result = questions
-            .Select(x => new QuestionResponse
+            .Select(x => new WebQuestionResponse
             {
                 Id = x.Question.Id,
                 UserId = x.Question.UserId,
@@ -83,7 +81,7 @@ public class WebQuestionController(WHYBotDbContext context) : ControllerBase
             })
             .ToList();
 
-        return Ok(new PagedResponse<QuestionResponse>
+        return Ok(new PagedResponse<WebQuestionResponse>
         {
             Items = result,
             Page = page,
@@ -96,7 +94,7 @@ public class WebQuestionController(WHYBotDbContext context) : ControllerBase
     /// Get a specific question by ID
     /// </summary>
     [HttpGet("{questionId}")]
-    public async Task<ActionResult<QuestionResponse>> GetQuestionAsync(Guid questionId)
+    public async Task<ActionResult<WebQuestionResponse>> GetQuestionAsync(Guid questionId)
     {
         var question = await context.Questions
             .Include(q => q.BotUser)
@@ -111,7 +109,7 @@ public class WebQuestionController(WHYBotDbContext context) : ControllerBase
 
         var answerCount = await context.Answers.CountAsync(a => a.QuestionId == questionId);
 
-        var response = new QuestionResponse
+        var response = new WebQuestionResponse
         {
             Id = question.Id,
             UserId = question.UserId,
