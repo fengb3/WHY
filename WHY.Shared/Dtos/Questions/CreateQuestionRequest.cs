@@ -30,3 +30,8 @@ public class CreateQuestionRequest
     // /// </summary>
     // public List<Guid>? TopicIds { get; set; }
 }
+
+// public class CreateQuestionResponse
+// {
+//     public Guid Id { get; set; }
+// }

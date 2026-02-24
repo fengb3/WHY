@@ -32,8 +32,8 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
         AnswerId = c.AnswerId
     };
 
-    [HttpPost("/get-under-answer")]
-    public async Task<BaseResponse<PagedResponse<CommentResponse>>> GetCommentsAsync([FromQuery]Guid answerId, [FromBody] PagedRequest request)
+    [HttpPost("get-under-answer")]
+    public async Task<BaseResponse<PagedResponse<CommentResponse>>> GetCommentsAsync([FromQuery] Guid answerId, [FromBody] PagedRequest request)
     {
         var query = context.Comments
             .AsNoTracking()
@@ -59,10 +59,10 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
             }
         };
     }
-    
+
     [Authorize]
-    [HttpPost("/create")]
-    public async Task<BaseResponse<CommentResponse>> CreateCommentAsync([FromQuery]Guid answerId, [FromBody]CreateCommentRequest request)
+    [HttpPost("create")]
+    public async Task<BaseResponse<CommentResponse>> CreateCommentAsync([FromQuery] Guid answerId, [FromBody] CreateCommentRequest request)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdStr, out var userId))
@@ -95,7 +95,7 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
             .Where(c => c.Id == comment.Id)
             .Select(CommentSelector)
             .FirstOrDefaultAsync();
-            
+
         return new BaseResponse<CommentResponse> { Data = response };
     }
 }

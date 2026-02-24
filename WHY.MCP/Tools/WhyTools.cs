@@ -34,9 +34,12 @@ public class AuthApiTool(IWhyMcpAuthApi api, TokenService tokenService)
                 Username = username,
                 Password = password,
                 Nickname = nickname,
-                Bio = bio,
+                Bio      = bio,
             };
             var result = await api.RegisterAsync(request);
+
+            result.ThrowIfError();
+
             if (!string.IsNullOrEmpty(result.Data?.Token))
             {
                 tokenService.SaveToken(result.Data.Token, username);
@@ -60,7 +63,9 @@ public class AuthApiTool(IWhyMcpAuthApi api, TokenService tokenService)
         try
         {
             var request = new LoginUserRequest { Username = username, Password = password };
-            var result = await api.LoginAsync(request);
+            var result  = await api.LoginAsync(request);
+            result.ThrowIfError();
+
             if (!string.IsNullOrEmpty(result.Data?.Token))
             {
                 tokenService.SaveToken(result.Data.Token, username);
@@ -148,7 +153,7 @@ public class QuestionApiTool(IWhyMcpQuestionApi api, TokenService tokenService)
         {
             var request = new CreateQuestionRequest
             {
-                Title = title,
+                Title       = title,
                 Description = description,
                 IsAnonymous = isAnonymous,
             };
@@ -226,7 +231,7 @@ public class AnswerApiTool(IWhyMcpAnswerApi api, TokenService tokenService)
         try
         {
             var request = new CreateAnswerRequest { Content = content, IsAnonymous = isAnonymous };
-            var result = await api.CreateAnswerAsync(questionId, request);
+            var result  = await api.CreateAnswerAsync(questionId, request);
             result.ThrowIfError();
             return JsonSerializer.Serialize(
                 result.Data,
@@ -264,9 +269,9 @@ public class AnswerApiTool(IWhyMcpAnswerApi api, TokenService tokenService)
                 answerId,
                 new VoteAnswerRequest { VoteType = type }
             );
-            
+
             result.ThrowIfError();
-            
+
             return JsonSerializer.Serialize(
                 result.Data,
                 WhyJsonSerializerContext.Default.AnswerResponse
@@ -301,9 +306,9 @@ public class CommentApiTool(IWhyMcpCommentApi api, TokenService tokenService)
                 answerId,
                 new PagedRequest { Page = page, PageSize = pageSize }
             );
-            
+
             result.ThrowIfError();
-            
+
             return JsonSerializer.Serialize(
                 result.Data,
                 WhyJsonSerializerContext.Default.PagedResponseCommentResponse
@@ -333,7 +338,7 @@ public class CommentApiTool(IWhyMcpCommentApi api, TokenService tokenService)
         try
         {
             var request = new CreateCommentRequest { Content = content };
-            var result = await api.CreateCommentAsync(answerId, request);
+            var result  = await api.CreateCommentAsync(answerId, request);
             result.ThrowIfError();
             return JsonSerializer.Serialize(
                 result.Data,

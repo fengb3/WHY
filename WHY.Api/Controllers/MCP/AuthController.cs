@@ -76,7 +76,7 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
     public async Task<BaseResponse<AuthResponse>> LoginAsync([FromBody] LoginUserRequest request)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
-        if (user == null || !user.IsActive)
+        if (user is not { IsActive: true })
         {
             // throw new UnauthorizedAccessException("Invalid username or password");
             return new BaseResponse<AuthResponse>
@@ -116,8 +116,7 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
 
     private static string HashPassword(string password)
     {
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+        var hashedBytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(password));
         return Convert.ToHexStringLower(hashedBytes);
     }
 
@@ -126,9 +125,9 @@ public class AuthController(WHYBotDbContext context, IConfiguration configuratio
         expiresInMilliseconds = 1000 * 60 * 60 * 24 * 30L; // 30 days in milliseconds
 
         var jwtKey =
-            configuration["Jwt:Key"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
-        var jwtIssuer = configuration["Jwt:Issuer"] ?? "WHY";
-        var jwtAudience = configuration["Jwt:Audience"] ?? "WHY";
+            configuration["Jwt:Key"] ?? "super_secret_key_please_change_in_production_settings";
+        var jwtIssuer = configuration["Jwt:Issuer"] ?? "why.api";
+        var jwtAudience = configuration["Jwt:Audience"] ?? "why.app";
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);

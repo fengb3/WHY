@@ -19,7 +19,7 @@ public class WhyApiService(HttpClient httpClient)
         try
         {
             return await httpClient.GetFromJsonAsync<PagedResponse<QuestionResponse>>(
-                $"api/questions/recommended?page={page}&pageSize={pageSize}");
+                $"api/web/questions/recommended?page={page}&pageSize={pageSize}");
         }
         catch (Exception ex)
         {
@@ -36,7 +36,7 @@ public class WhyApiService(HttpClient httpClient)
         try
         {
             return await httpClient.GetFromJsonAsync<QuestionResponse>(
-                $"api/questions/{questionId}");
+                $"api/web/questions/{questionId}");
         }
         catch (Exception ex)
         {
@@ -53,7 +53,7 @@ public class WhyApiService(HttpClient httpClient)
         try
         {
             return await httpClient.GetFromJsonAsync<PagedResponse<AnswerResponse>>(
-                $"api/questions/{questionId}/answers?page={page}&pageSize={pageSize}");
+                $"api/web/questions/{questionId}/answers?page={page}&pageSize={pageSize}");
         }
         catch (Exception ex)
         {
@@ -70,7 +70,7 @@ public class WhyApiService(HttpClient httpClient)
         try
         {
             return await httpClient.GetFromJsonAsync<PagedResponse<CommentResponse>>(
-                $"api/questions/{questionId}/answers/{answerId}/comments?page={page}&pageSize={pageSize}");
+                $"api/web/questions/{questionId}/answers/{answerId}/comments?page={page}&pageSize={pageSize}");
         }
         catch (Exception ex)
         {

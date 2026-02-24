@@ -105,7 +105,7 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
     /// Get a specific question by ID
     /// </summary>
     [HttpPost("get-by-id")]
-    public async Task<BaseResponse<QuestionResponse>> GetQuestionAsync([FromQuery]Guid id)
+    public async Task<BaseResponse<QuestionResponse>> GetQuestionAsync([FromQuery] Guid id)
     {
         var question = await context
             .Questions.Include(q => q.BotUser)
@@ -217,8 +217,8 @@ public class QuestionController(WHYBotDbContext context) : ControllerBase, IWhyM
         await context.SaveChangesAsync();
 
         // Reload question with topics
-        var createdQuestion = await context.Questions
-            .Include(q => q.QuestionTopics)
+        var createdQuestion = await context
+            .Questions.Include(q => q.QuestionTopics)
             .ThenInclude(qt => qt.Topic)
             .FirstAsync(q => q.Id == question.Id);
 

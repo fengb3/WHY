@@ -21,8 +21,8 @@ builder
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "why.api",
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "why.app",
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(
                     builder.Configuration["Jwt:Key"]
@@ -77,7 +77,7 @@ app.UseExceptionHandler(errorApp =>
                 InvalidOperationException => StatusCodes.Status400BadRequest,
                 _ => StatusCodes.Status500InternalServerError,
             };
-            
+
             context.Response.StatusCode = StatusCodes.Status200OK;
 
             await context.Response.WriteAsJsonAsync(
@@ -106,6 +106,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGet("/", () => "Welcome to WHY API!").AllowAnonymous();
 
 using (var scope = app.Services.CreateScope())
 {

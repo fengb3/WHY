@@ -20,7 +20,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
     /// <summary>
     /// Get all answers for a question
     /// </summary>
-    [HttpPost("/get-by-question-id")]
+    [HttpPost("get-by-question-id")]
     public async Task<BaseResponse<PagedResponse<AnswerResponse>>> GetAnswersAsync(
         [FromQuery] Guid questionId,
         [FromBody] PagedRequest request
@@ -47,18 +47,18 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             .Take(request.PageSize)
             .Select(a => new AnswerResponse
             {
-                Id            = a.Id,
-                QuestionId    = a.QuestionId,
-                UserId        = a.UserId,
-                Username      = a.IsAnonymous ? null : a.BotUser.Nickname,
-                Content       = a.Content,
-                UpvoteCount   = a.UpvoteCount,
+                Id = a.Id,
+                QuestionId = a.QuestionId,
+                UserId = a.UserId,
+                Username = a.IsAnonymous ? null : a.BotUser.Nickname,
+                Content = a.Content,
+                UpvoteCount = a.UpvoteCount,
                 DownvoteCount = a.DownvoteCount,
-                CommentCount  = a.CommentCount,
-                CreatedAt     = a.CreatedAt,
-                UpdatedAt     = a.UpdatedAt,
-                IsAnonymous   = a.IsAnonymous,
-                IsAccepted    = a.IsAccepted,
+                CommentCount = a.CommentCount,
+                CreatedAt = a.CreatedAt,
+                UpdatedAt = a.UpdatedAt,
+                IsAnonymous = a.IsAnonymous,
+                IsAccepted = a.IsAccepted,
             })
             .ToListAsync();
 
@@ -66,12 +66,12 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
         {
             Data = new PagedResponse<AnswerResponse>
             {
-                Items      = answers,
-                Page       = request.Page,
-                PageSize   = request.PageSize,
+                Items = answers,
+                Page = request.Page,
+                PageSize = request.PageSize,
                 TotalCount = totalCount,
             },
-            Message    = "Success",
+            Message = "Success",
             StatusCode = 200,
         };
     }
@@ -80,7 +80,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
     /// Create an answer for a question
     /// </summary>
     [Authorize]
-    [HttpPost("/create")]
+    [HttpPost("create")]
     public async Task<BaseResponse<AnswerResponse>> CreateAnswerAsync(
         [FromQuery] Guid questionId,
         [FromBody] CreateAnswerRequest request
@@ -92,8 +92,8 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             // HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return new BaseResponse<AnswerResponse>
             {
-                Data       = null,
-                Message    = "Unauthorized",
+                Data = null,
+                Message = "Unauthorized",
                 StatusCode = 401,
             };
         }
@@ -104,9 +104,9 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             // HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             return new BaseResponse<AnswerResponse>
             {
-                Data       = null,
-                Message    = "Not Found",
-                StatusCode = StatusCodes.Status404NotFound
+                Data = null,
+                Message = "Not Found",
+                StatusCode = StatusCodes.Status404NotFound,
             };
         }
 
@@ -115,8 +115,8 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             // HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             return new BaseResponse<AnswerResponse>
             {
-                Data       = null,
-                Message    = "Cannot answer a closed question",
+                Data = null,
+                Message = "Cannot answer a closed question",
                 StatusCode = 400,
             };
         }
@@ -127,22 +127,22 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             // HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             return new BaseResponse<AnswerResponse>
             {
-                Data       = null,
-                Message    = "User not found",
+                Data = null,
+                Message = "User not found",
                 StatusCode = 400,
             };
         }
 
         var answer = new Answer
         {
-            Id          = Guid.NewGuid(),
-            QuestionId  = questionId,
-            UserId      = userId,
-            Content     = request.Content,
-            CreatedAt   = DateTime.UtcNow,
-            UpdatedAt   = DateTime.UtcNow,
+            Id = Guid.NewGuid(),
+            QuestionId = questionId,
+            UserId = userId,
+            Content = request.Content,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
             IsAnonymous = request.IsAnonymous,
-            IsAccepted  = false,
+            IsAccepted = false,
         };
 
         context.Answers.Add(answer);
@@ -153,36 +153,37 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
         {
             Data = new AnswerResponse
             {
-                Id            = answer.Id,
-                QuestionId    = answer.QuestionId,
-                UserId        = answer.UserId,
-                Username      = answer.IsAnonymous ? null : user.Nickname,
-                Content       = answer.Content,
-                UpvoteCount   = answer.UpvoteCount,
+                Id = answer.Id,
+                QuestionId = answer.QuestionId,
+                UserId = answer.UserId,
+                Username = answer.IsAnonymous ? null : user.Nickname,
+                Content = answer.Content,
+                UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,
-                CommentCount  = answer.CommentCount,
-                CreatedAt     = answer.CreatedAt,
-                UpdatedAt     = answer.UpdatedAt,
-                IsAnonymous   = answer.IsAnonymous,
-                IsAccepted    = answer.IsAccepted,
+                CommentCount = answer.CommentCount,
+                CreatedAt = answer.CreatedAt,
+                UpdatedAt = answer.UpdatedAt,
+                IsAnonymous = answer.IsAnonymous,
+                IsAccepted = answer.IsAccepted,
             },
-            Message    = "Answer created successfully",
+            Message = "Answer created successfully",
             StatusCode = 201,
         };
     }
 
     [Authorize]
-    [HttpPost("/vote")]
-    public async Task<BaseResponse<AnswerResponse>> VoteAnswerAsync([FromQuery] Guid answerId, [FromBody] VoteAnswerRequest request)
+    [HttpPost("vote")]
+    public async Task<BaseResponse<AnswerResponse>> VoteAnswerAsync(
+        [FromQuery] Guid answerId,
+        [FromBody] VoteAnswerRequest request
+    )
     {
-
-
         var userIdString = User.FindFirst("id")?.Value;
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
             return new BaseResponse<AnswerResponse>
             {
-                Message    = "Unauthorized",
+                Message = "Unauthorized",
                 StatusCode = StatusCodes.Status401Unauthorized,
             };
         }
@@ -196,7 +197,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
         {
             return new BaseResponse<AnswerResponse>
             {
-                Message    = "Answer not found",
+                Message = "Answer not found",
                 StatusCode = StatusCodes.Status404NotFound,
             };
         }
@@ -213,7 +214,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
                     var vote = new AnswerVote
                     {
                         AnswerId = answerId,
-                        UserId   = userId,
+                        UserId = userId,
                         IsUpvote = true,
                     };
                     context.AnswerVotes.Add(vote);
@@ -229,7 +230,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
                 {
                     return new BaseResponse<AnswerResponse>
                     {
-                        Message    = "You have already upvoted this answer.",
+                        Message = "You have already upvoted this answer.",
                         StatusCode = StatusCodes.Status409Conflict,
                     };
                 }
@@ -241,7 +242,7 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
                     var vote = new AnswerVote
                     {
                         AnswerId = answerId,
-                        UserId   = userId,
+                        UserId = userId,
                         IsUpvote = false,
                     };
                     context.AnswerVotes.Add(vote);
@@ -257,8 +258,8 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
                 {
                     return new BaseResponse<AnswerResponse>
                     {
-                        Data       = null,
-                        Message    = "You have already down voted this answer.",
+                        Data = null,
+                        Message = "You have already down voted this answer.",
                         StatusCode = 409,
                     };
                 }
@@ -282,8 +283,8 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
                     HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
                     return new BaseResponse<AnswerResponse>
                     {
-                        Data       = null,
-                        Message    = "You have not voted on this answer.",
+                        Data = null,
+                        Message = "You have not voted on this answer.",
                         StatusCode = 409,
                     };
                 }
@@ -291,13 +292,13 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             default:
                 return new BaseResponse<AnswerResponse>
                 {
-                    Data       = null,
-                    Message    = "Invalid vote type.",
+                    Data = null,
+                    Message = "Invalid vote type.",
                     StatusCode = 400,
                 };
         }
 
-        answer.UpdatedAt               = DateTime.UtcNow;
+        answer.UpdatedAt = DateTime.UtcNow;
         answer.Question.LastActivityAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
@@ -306,20 +307,20 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
         {
             Data = new AnswerResponse
             {
-                Id            = answer.Id,
-                QuestionId    = answer.QuestionId,
-                UserId        = answer.UserId,
-                Username      = answer.IsAnonymous ? null : answer.BotUser.Nickname,
-                Content       = answer.Content,
-                UpvoteCount   = answer.UpvoteCount,
+                Id = answer.Id,
+                QuestionId = answer.QuestionId,
+                UserId = answer.UserId,
+                Username = answer.IsAnonymous ? null : answer.BotUser.Nickname,
+                Content = answer.Content,
+                UpvoteCount = answer.UpvoteCount,
                 DownvoteCount = answer.DownvoteCount,
-                CommentCount  = answer.CommentCount,
-                CreatedAt     = answer.CreatedAt,
-                UpdatedAt     = answer.UpdatedAt,
-                IsAnonymous   = answer.IsAnonymous,
-                IsAccepted    = answer.IsAccepted,
+                CommentCount = answer.CommentCount,
+                CreatedAt = answer.CreatedAt,
+                UpdatedAt = answer.UpdatedAt,
+                IsAnonymous = answer.IsAnonymous,
+                IsAccepted = answer.IsAccepted,
             },
-            Message    = "Vote recorded successfully",
+            Message = "Vote recorded successfully",
             StatusCode = 200,
         };
     }
