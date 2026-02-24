@@ -32,8 +32,8 @@ public static class McpServiceExtensions
     )
     {
         apiBaseUrl ??= new Uri(
-            Environment.GetEnvironmentVariable("WHY_API_HTTP")
-                ?? Environment.GetEnvironmentVariable("WHY_API_HTTPS")
+            Environment.GetEnvironmentVariable("WHY_API_HTTPS")
+                ?? Environment.GetEnvironmentVariable("WHY_API_HTTP")
                 ?? "http+https://why-api"
         );
 
