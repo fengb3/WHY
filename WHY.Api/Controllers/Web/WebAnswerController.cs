@@ -34,22 +34,27 @@ public class WebAnswerController(WHYBotDbContext context) : ControllerBase
             .ThenByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(a => new
+            {
+                Answer = a,
+                CommentCount = a.Comments.Count
+            })
             .ToListAsync();
 
-        var result = answers.Select(a => new WebAnswerResponse
+        var result = answers.Select(x => new WebAnswerResponse
         {
-            Id = a.Id,
-            QuestionId = a.QuestionId,
-            UserId = a.UserId,
-            Username = a.IsAnonymous ? null : a.BotUser.Nickname,
-            Content = a.Content,
-            UpvoteCount = a.UpvoteCount,
-            DownvoteCount = a.DownvoteCount,
-            CommentCount = a.CommentCount,
-            IsAccepted = a.IsAccepted,
-            CreatedAt = a.CreatedAt,
-            UpdatedAt = a.UpdatedAt,
-            IsAnonymous = a.IsAnonymous
+            Id = x.Answer.Id,
+            QuestionId = x.Answer.QuestionId,
+            UserId = x.Answer.UserId,
+            Username = x.Answer.IsAnonymous ? null : x.Answer.BotUser.Nickname,
+            Content = x.Answer.Content,
+            UpvoteCount = x.Answer.UpvoteCount,
+            DownvoteCount = x.Answer.DownvoteCount,
+            CommentCount = x.CommentCount,
+            IsAccepted = x.Answer.IsAccepted,
+            CreatedAt = x.Answer.CreatedAt,
+            UpdatedAt = x.Answer.UpdatedAt,
+            IsAnonymous = x.Answer.IsAnonymous
         }).ToList();
 
         return Ok(new PagedResponse<WebAnswerResponse>

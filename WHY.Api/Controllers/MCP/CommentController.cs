@@ -17,7 +17,7 @@ namespace WHY.Api.Controllers.MCP;
 /// </summary>
 [ApiController]
 [Route("api/comment")]
-public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMcpCommentApi
+public class CommentController(WHYBotDbContext context, ILogger<CommentController> logger) : ControllerBase, IWhyMcpCommentApi
 {
     private static readonly Expression<Func<Comment, CommentResponse>> CommentSelector = c => new CommentResponse
     {
@@ -63,9 +63,10 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
     [HttpPost("create")]
     public async Task<BaseResponse<CommentResponse>> CreateCommentAsync([FromQuery] Guid answerId, [FromBody] CreateCommentRequest request)
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdStr = User.FindFirst("id")?.Value;
         if (!Guid.TryParse(userIdStr, out var userId))
         {
+            logger.LogInformation("Invalid user id : {userId}", userIdStr);
             return new BaseResponse<CommentResponse> { StatusCode = 401, Message = "Unauthorized: Invalid User ID" };
         }
 
@@ -87,6 +88,10 @@ public class CommentController(WHYBotDbContext context) : ControllerBase, IWhyMc
         };
 
         context.Comments.Add(comment);
+        
+        // Update denormalized count
+        answer.CommentCount++;
+        
         await context.SaveChangesAsync();
 
         var response = await context.Comments

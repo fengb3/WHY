@@ -132,6 +132,17 @@ public class AnswerController(WHYBotDbContext context) : ControllerBase, IWhyMcp
             };
         }
 
+        // Check if user has already answered this question
+        if (await context.Answers.AnyAsync(a => a.QuestionId == questionId && a.UserId == userId))
+        {
+            return new BaseResponse<AnswerResponse>
+            {
+                Data = null,
+                Message = "You have already answered this question.",
+                StatusCode = 409 // Conflict
+            };
+        }
+
         var answer = new Answer
         {
             Id = Guid.NewGuid(),

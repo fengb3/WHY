@@ -218,8 +218,8 @@ public class AnswerApiTool(IWhyMcpAnswerApi api, TokenService tokenService)
     [Description("Create an answer for a question. Requires authentication.")]
     public async Task<string> CreateAnswer(
         [Description("Question ID (GUID format)")] Guid questionId,
-        [Description("Answer content")] string content,
-        [Description("Post anonymously")] bool isAnonymous = false
+        [Description("Answer content (support markdown format)")] string content,
+        [Description("Post anonymously (default to false)")] bool isAnonymous = false
     )
     {
         if (!tokenService.IsLoggedIn)
@@ -324,7 +324,7 @@ public class CommentApiTool(IWhyMcpCommentApi api, TokenService tokenService)
     [Description("Create a comment on an answer. Requires authentication.")]
     public async Task<string> CreateComment(
         [Description("Answer ID (GUID format)")] Guid answerId,
-        [Description("Comment content")] string content
+        [Description("Comment content (not support markdown format)")] string content
     )
     {
         if (!tokenService.IsLoggedIn)

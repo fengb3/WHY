@@ -20,11 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="wwwroot\lib\" />
-      <Folder Include="wwwroot\sample-data\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
