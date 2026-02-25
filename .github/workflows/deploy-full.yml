@@ -1,0 +1,123 @@
+name: Deploy To Alibaba Cloud (Full CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  DEPLOY_PATH: /app/why-full-ci
+  # 镜像名称前缀
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x' 
+
+    - name: Install Aspire Workload
+      run: dotnet workload install aspire
+
+    # 1. 生成 Docker Compose 文件 (不构建镜像)
+    - name: Generate Aspire Manifest & Compose
+      run: |
+        # 确保输出目录存在
+        mkdir -p output
+        # 使用 aspire publish 生成配置
+        # 注意: 这会生成 docker-compose.yaml 和 .env 文件
+        # 我们使用 GitHub SHA 作为镜像标签的一部分，避免缓存问题
+        dotnet run --project WHY.AppHost/WHY.AppHost.csproj --publisher docker --output-path output
+        
+    # 2. 登录镜像仓库
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # 3. 设置镜像名称和标签的环境变量，供 docker build 使用
+    # Aspire 默认生成的 docker-compose.yaml 使用 ${PROJECT_NAME_IMAGE} 变量
+    # 我们需要手动构建镜像并推送到仓库
+    
+    # 构建并推送 API 镜像
+    - name: Build & Push API
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: WHY.Api/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-api:sha-${{ github.sha }}
+
+    # 构建并推送 Web 镜像
+    - name: Build & Push Web
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: WHY.Web/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-web:sha-${{ github.sha }}
+
+    # 4. 准备部署脚本和变量
+    - name: Prepare Deploy Scripts
+      run: |
+        # 创建用于服务器的 .env 文件
+        cat <<EOF > output/.env.production
+        # 数据库密码
+        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+        
+        # 端口映射
+        WHY_API_PORT=8080
+        WHY_WEB_PORT=8081
+        
+        # 镜像引用 (使用刚才构建的标签)
+        WHY_API_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-api:sha-${{ github.sha }}
+        WHY_WEB_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-web:sha-${{ github.sha }}
+        
+        # 其他可能需要的变量 (根据 aspire 生成的 yaml 调整)
+        WHY_MCP_REMOTE_IMAGE=ignore
+        WHY_MCP_REMOTE_PORT=8082
+        EOF
+
+    # 5. 复制文件到服务器
+    - name: Copy files to server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        source: "output/docker-compose.yaml,output/.env.production"
+        target: ${{ env.DEPLOY_PATH }}
+        strip_components: 1 # 去掉 output/
+
+    # 6. 在服务器上执行部署
+    - name: Deploy on server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd ${{ env.DEPLOY_PATH }}
+          
+          # 登录到 ghcr.io
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+          # 重命名环境文件以供 docker compose 使用
+          mv .env.production .env
+          
+          # 拉取镜像并启动
+          docker compose pull
+          docker compose up -d --remove-orphans
