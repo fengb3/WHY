@@ -8,8 +8,6 @@ on:
 env:
   REGISTRY: ghcr.io
   DEPLOY_PATH: /app/why
-  # 镜像名称前缀
-  IMAGE_PREFIX: ${{ github.repository }}
 
 jobs:
   build-and-deploy:
@@ -21,6 +19,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    # GHCR 要求镜像仓库名全小写（github.repository 是 fengb3/WHY，含大写）
+    - name: Set lowercase image prefix
+      run: echo "IMAGE_PREFIX=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
