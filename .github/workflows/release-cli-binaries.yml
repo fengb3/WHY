@@ -48,7 +48,7 @@ jobs:
           dotnet publish WHY.Cli/WHY.Cli.csproj
           -c Release
           -r ${{ matrix.rid }}
-          /p:Version=${{ steps.version.outputs.version || '0.1.0' }}
+          -p:Version=${{ steps.version.outputs.version || '0.1.0' }}
           -o ./publish
 
       - name: Archive binary
