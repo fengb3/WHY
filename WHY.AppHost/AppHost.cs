@@ -38,11 +38,6 @@ var api = builder
  #pragma warning restore ASPIRECOMPUTE003
 ;
 
-// var mcpRemote = builder
-//     .AddProject<Projects.WHY_MCP_Remote>("why-mcp-remote")
-//     .WaitFor(api)
-//     .WithReference(api);
-
 var web = builder.AddProject<Projects.WHY_Web>("why-web").WaitFor(api).WithReference(api);
 
 builder.Build().Run();

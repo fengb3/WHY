@@ -483,3 +483,7 @@ $RECYCLE.BIN/
 WHY.AppHost/aspire-output/.env
 WHY.AppHost/aspire-output/.env.production
 WHY.AppHost/aspire-output/
+
+# Auto-installed SuperCli skill (regenerated on build)
+.claude/
+.agents/skills/supercli/

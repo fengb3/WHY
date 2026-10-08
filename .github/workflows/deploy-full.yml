@@ -27,9 +27,6 @@ jobs:
       with:
         dotnet-version: '10.0.x' 
 
-    - name: Install Aspire Workload
-      run: dotnet workload install aspire
-
     # 1. 生成 Docker Compose 文件 (不构建镜像)
     - name: Generate Aspire Manifest & Compose
       run: |
@@ -86,9 +83,6 @@ jobs:
         WHY_API_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-api:sha-${{ github.sha }}
         WHY_WEB_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/why-web:sha-${{ github.sha }}
         
-        # 其他可能需要的变量 (根据 aspire 生成的 yaml 调整)
-        WHY_MCP_REMOTE_IMAGE=ignore
-        WHY_MCP_REMOTE_PORT=8082
         EOF
 
     # 5. 复制文件到服务器
