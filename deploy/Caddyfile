@@ -1,0 +1,13 @@
+# Caddy reverse proxy for the WHY API (中国大陆免备案方案).
+#
+# 背景：阿里云会拦截未备案域名在 80/443 端口的流量（ICP 检测），
+# 因此 Caddy 监听高位端口 8443，证书由宿主机的 acme.sh 通过 DNS-01 挑战
+# （DuckDNS API，无需任何入站端口）签发，挂载到 /certs 目录。
+#
+# {$DOMAIN} 由 DOMAIN 环境变量替换（在服务器 .env 中设置）。
+
+https://{$DOMAIN}:8443 {
+    tls /certs/fullchain.cer /certs/privkey.key
+
+    reverse_proxy why-api:8080
+}
