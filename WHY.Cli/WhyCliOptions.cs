@@ -8,5 +8,5 @@ public class WhyCliOptions
     [Option("--api-base", ShortName = "-a")]
     public string ApiBase { get; set; } =
         Environment.GetEnvironmentVariable("WHY_API_BASE")
-        ?? "http://localhost:5135/";
+        ?? "https://why-api.duckdns.org:8443/";
 }

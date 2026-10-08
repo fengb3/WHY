@@ -53,6 +53,17 @@ IMPORTANT! Consider avoiding persistent containers early during development to a
 ## Aspire workload
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
+## Deployment
+
+Production is deployed from the AppHost as the single source of truth; the docker-compose file is generated, never hand-edited.
+
+- **Architecture**: Blazor WASM web → GitHub Pages (`https://fengb3.github.io/WHY/`). API + Postgres + Caddy run on an Aliyun server via docker compose.
+- **Generate compose**: `Parameters__apidomain=<domain> aspire publish --apphost WHY.AppHost/WHY.AppHost.csproj -o artifacts --no-build --non-interactive`. Do NOT use `dotnet run --publisher docker` — it fails on Aspire 13.1 (`docker-compose-down-compose` step bug). `artifacts/` is gitignored.
+- **CI**: `.github/workflows/deploy-full.yml` builds `why-api` → GHCR (image names must be lowercase: `${GITHUB_REPOSITORY,,}`), publishes compose via `aspire publish`, and deploys over SSH (`command_timeout` must be raised — the default 10 min is too short for pulling from GHCR in China). `.github/workflows/deploy.yml` deploys the web to Pages. Required GitHub secrets are listed in `SECRETS.md`.
+- **Server**: Caddy terminates TLS on port **8443** and reverse-proxies to `why-api:8080` (config: `deploy/Caddyfile`). Ports 80/443 cannot be used for domains without an ICP filing (Aliyun intercepts them), and HTTP-01/TLS-ALPN-01 are unavailable — certificates are issued with acme.sh **DNS-01** (DuckDNS API) into `../deploy/certs` relative to the compose file, auto-renewed by cron. Install acme.sh via `git clone` — `get.acme.sh` is unreachable from the server.
+- **Server environment**: docker.io is blocked; registry mirrors are configured in `/etc/docker/daemon.json`. Pre-pull base images before first deploy. The host has ~1.6 GB RAM + 2 GB swap.
+- **WHY.Cli**: defaults to the production API (baked into `WhyCliOptions.cs`); the public skill and README intentionally do not show the URL. For local development against `aspire run`, set `WHY_API_BASE=http://localhost:5135/`.
+
 ## Official documentation
 IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
 
