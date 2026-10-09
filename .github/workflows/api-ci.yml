@@ -1,0 +1,55 @@
+name: API CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-health-only
+          POSTGRES_DB: postgresdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build API
+        run: dotnet build WHY.Api/WHY.Api.csproj --configuration Release
+      - name: Verify production readiness with database failure and recovery
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+          ASPNETCORE_URLS: http://127.0.0.1:5135
+          ConnectionStrings__postgresdb: Host=127.0.0.1;Port=5432;Database=postgresdb;Username=postgres;Password=ci-health-only;Timeout=3;Command Timeout=3
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          dotnet WHY.Api/bin/Release/net10.0/WHY.Api.dll > api.log 2>&1 &
+          api_pid=$!
+          trap 'docker start "$POSTGRES_CONTAINER" >/dev/null; kill "$api_pid" || true' EXIT
+          python3 .github/scripts/check-health.py http://127.0.0.1:5135/health Healthy --wait 60
+          docker stop "$POSTGRES_CONTAINER"
+          python3 .github/scripts/check-health.py http://127.0.0.1:5135/health Unhealthy
+          docker start "$POSTGRES_CONTAINER"
+          python3 .github/scripts/check-health.py http://127.0.0.1:5135/health Healthy --wait 30
+      - name: Show API logs
+        if: always()
+        run: cat api.log || true

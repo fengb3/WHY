@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using WHY.Database;
 using WHY.Shared.Dtos;
@@ -10,6 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<WHYBotDbContext>(connectionName: "postgresdb");
+// Bound readiness probes even when a dependency is unavailable.
+builder.Services.Configure<HealthCheckServiceOptions>(options =>
+{
+    foreach (var registration in options.Registrations)
+        registration.Timeout = TimeSpan.FromSeconds(5);
+});
 
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
