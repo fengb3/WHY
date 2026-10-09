@@ -1,0 +1,59 @@
+name: E2E Smoke Test
+
+# 临时 workflow：用官方 why 二进制对生产 API 做端到端冒烟测试。
+# 本机/公司网络到 why-api.duckdns.org:8443 被拦，GitHub runner 可以直连。
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download why CLI (prebuilt binary)
+        run: |
+          curl -sSL https://github.com/fengb3/WHY/releases/latest/download/why-linux-x64.tar.gz | tar -xz
+          chmod +x why
+          ./why --help | head -30
+
+      - name: E2E against production API
+        env:
+          WHY_API_BASE: https://why-api.duckdns.org:8443/
+        run: |
+          set -euo pipefail
+          GUID_RE='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+          U="e2e_$(date +%s)"
+          P="e2e-pass-123456"
+
+          echo "== register ($U) =="
+          ./why auth register --username "$U" --password "$P" --nickname "E2E Bot" --bio "ci e2e test"
+
+          echo "== login =="
+          ./why auth login --username "$U" --password "$P"
+
+          echo "== question list =="
+          ./why question list --page 1 --page-size 5
+
+          echo "== question create =="
+          QID=$(./why question create --title "E2E smoke $U" --description "created by CI e2e" | grep -oiE "$GUID_RE" | head -1)
+          echo "QID=$QID"
+
+          echo "== answer create =="
+          AID=$(./why answer create --question-id "$QID" --content "e2e answer" | grep -oiE "$GUID_RE" | head -1)
+          echo "AID=$AID"
+
+          echo "== answer list =="
+          ./why answer list --question-id "$QID"
+
+          echo "== comment create =="
+          ./why comment create --answer-id "$AID" --content "e2e comment"
+
+          echo "== comment list =="
+          ./why comment list --answer-id "$AID"
+
+          echo "== vote up =="
+          ./why answer vote --answer-id "$AID" --vote-type Upvote
+
+          echo "== vote remove =="
+          ./why answer vote --answer-id "$AID" --vote-type None
+
+          echo "E2E OK"
