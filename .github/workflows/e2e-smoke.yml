@@ -1,7 +1,8 @@
 name: E2E Smoke Test
 
 # 临时 workflow：用官方 why 二进制对生产 API 做端到端冒烟测试。
-# 本机/公司网络到 why-api.duckdns.org:8443 被拦，GitHub runner 可以直连。
+# 背景：本机(公司网)和 GitHub runner(跨境) 到 why-api.duckdns.org:8443 的 TLS 都被拦，
+# 因此改为 SSH 到服务器本机执行：先诊断直连，再走 Caddy+TLS 完整链路跑 e2e。
 on:
   workflow_dispatch:
 
@@ -9,51 +10,75 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - name: Download why CLI (prebuilt binary)
+      - name: Diagnose runner -> API connectivity
         run: |
-          curl -sSL https://github.com/fengb3/WHY/releases/latest/download/why-linux-x64.tar.gz | tar -xz
-          chmod +x why
-          ./why --help | head -30
+          curl -sS -o /dev/null -w "tcp+tls: %{http_code} in %{time_total}s\n" \
+            --connect-timeout 8 https://why-api.duckdns.org:8443/ || true
 
-      - name: E2E against production API
-        env:
-          WHY_API_BASE: https://why-api.duckdns.org:8443/
-        run: |
-          set -euo pipefail
-          GUID_RE='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-          U="e2e_$(date +%s)"
-          P="e2e-pass-123456"
+      - name: E2E on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: "10m"
+          script: |
+            set -e
+            cd /tmp
+            rm -rf why-e2e && mkdir why-e2e && cd why-e2e
 
-          echo "== register ($U) =="
-          ./why auth register --username "$U" --password "$P" --nickname "E2E Bot" --bio "ci e2e test"
+            echo "== download why binary (via gh-proxy) =="
+            curl -sSL https://gh-proxy.com/https://github.com/fengb3/WHY/releases/latest/download/why-linux-x64.tar.gz | tar -xz
+            chmod +x why
 
-          echo "== login =="
-          ./why auth login --username "$U" --password "$P"
+            echo "== diag: docker ps =="
+            docker ps --format '{{.Names}}\t{{.Status}}'
 
-          echo "== question list =="
-          ./why question list --page 1 --page-size 5
+            echo "== diag: direct API container (bypass caddy) =="
+            curl -sS -o /dev/null -w "why-api direct: %{http_code}\n" \
+              --connect-timeout 5 http://localhost:${WHY_API_PORT:-8080}/ || true
 
-          echo "== question create =="
-          QID=$(./why question create --title "E2E smoke $U" --description "created by CI e2e" | grep -oiE "$GUID_RE" | head -1)
-          echo "QID=$QID"
+            echo "== diag: caddy TLS via hosts override =="
+            grep -q 'why-api.duckdns.org' /etc/hosts || echo '127.0.0.1 why-api.duckdns.org' >> /etc/hosts
+            curl -sS -o /dev/null -w "caddy https: %{http_code}\n" \
+              --connect-timeout 5 https://why-api.duckdns.org:8443/
 
-          echo "== answer create =="
-          AID=$(./why answer create --question-id "$QID" --content "e2e answer" | grep -oiE "$GUID_RE" | head -1)
-          echo "AID=$AID"
+            echo "== e2e via why binary =="
+            export WHY_API_BASE=https://why-api.duckdns.org:8443/
+            GUID_RE='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+            U="e2e_$(date +%s)"
+            P="e2e-pass-123456"
 
-          echo "== answer list =="
-          ./why answer list --question-id "$QID"
+            echo "-- register ($U) --"
+            ./why auth register --username "$U" --password "$P" --nickname "E2E Bot" --bio "ci e2e test"
 
-          echo "== comment create =="
-          ./why comment create --answer-id "$AID" --content "e2e comment"
+            echo "-- login --"
+            ./why auth login --username "$U" --password "$P"
 
-          echo "== comment list =="
-          ./why comment list --answer-id "$AID"
+            echo "-- question list --"
+            ./why question list --page 1 --page-size 5
 
-          echo "== vote up =="
-          ./why answer vote --answer-id "$AID" --vote-type Upvote
+            echo "-- question create --"
+            QID=$(./why question create --title "E2E smoke $U" --description "created by CI e2e" | grep -oiE "$GUID_RE" | head -1)
+            echo "QID=$QID"
 
-          echo "== vote remove =="
-          ./why answer vote --answer-id "$AID" --vote-type None
+            echo "-- answer create --"
+            AID=$(./why answer create --question-id "$QID" --content "e2e answer" | grep -oiE "$GUID_RE" | head -1)
+            echo "AID=$AID"
 
-          echo "E2E OK"
+            echo "-- answer list --"
+            ./why answer list --question-id "$QID"
+
+            echo "-- comment create --"
+            ./why comment create --answer-id "$AID" --content "e2e comment"
+
+            echo "-- comment list --"
+            ./why comment list --answer-id "$AID"
+
+            echo "-- vote up --"
+            ./why answer vote --answer-id "$AID" --vote-type Upvote
+
+            echo "-- vote remove --"
+            ./why answer vote --answer-id "$AID" --vote-type None
+
+            echo "E2E OK"
